@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build Release
+      run: dotnet build --configuration Release
+
+    - name: Publish Single File (Framework-dependent)
+      run: |
+        dotnet publish src/ScreenBridge.App/ScreenBridge.App.csproj `
+          -c Release `
+          -r win-x64 `
+          --self-contained false `
+          -p:PublishSingleFile=true `
+          -o ./publish
+
+    - name: Publish Self-Contained
+      run: |
+        dotnet publish src/ScreenBridge.App/ScreenBridge.App.csproj `
+          -c Release `
+          -r win-x64 `
+          --self-contained true `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -o ./publish-self-contained
+
+    - name: Create Release Archives
+      run: |
+        Compress-Archive -Path ./publish/ScreenBridge.App.exe -DestinationPath ./ScreenBridge-${{ github.ref_name }}-win-x64.zip
+        Compress-Archive -Path ./publish-self-contained/ScreenBridge.App.exe -DestinationPath ./ScreenBridge-${{ github.ref_name }}-win-x64-self-contained.zip
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ./ScreenBridge-${{ github.ref_name }}-win-x64.zip
+          ./ScreenBridge-${{ github.ref_name }}-win-x64-self-contained.zip
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

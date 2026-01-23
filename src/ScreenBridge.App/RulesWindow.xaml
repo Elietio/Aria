@@ -1,0 +1,106 @@
+<ui:FluentWindow x:Class="ScreenBridge.App.RulesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        mc:Ignorable="d"
+        Title="规则配置" Height="600" Width="500"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Title="规则配置" Grid.Row="0"/>
+
+        <ScrollViewer Grid.Row="1" Padding="20">
+            <StackPanel>
+                
+                <!-- DDC 检测设置 -->
+                <ui:CardExpander Header="🔍 检测设置" IsExpanded="True" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="选择要监控输入信号的显示器：" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,10"/>
+                        <ComboBox x:Name="DDCMonitorCombo" DisplayMemberPath="FriendlyName" Margin="0,0,0,10"/>
+                        <TextBlock Text="程序会持续检测这台显示器的输入源变化，以触发模式切换。" 
+                                   FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        
+                        <ui:ToggleSwitch x:Name="SwitchOnLossToggle" Content="DDC 信号由于切源断开时，自动切到模式 B (兼容 LG)" 
+                                         Margin="0,0,0,10" FontSize="12"/>
+
+                        <Grid>
+                             <Grid.ColumnDefinitions>
+                                 <ColumnDefinition Width="Auto"/>
+                                 <ColumnDefinition Width="*"/>
+                             </Grid.ColumnDefinitions>
+                             <TextBlock Text="当前侦测值:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                             <TextBlock x:Name="DDCReadoutText" Text="读取中..." 
+                                        FontWeight="Bold" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                        VerticalAlignment="Center" Grid.Column="1"/>
+                        </Grid>
+                        <ui:Button Content="刷新读取" Appearance="Secondary" FontSize="12" 
+                                   Margin="0,8,0,0" Padding="8,4" HorizontalAlignment="Left"
+                                   Click="RefreshDDCReadout_Click"/>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <!-- 模式 A 设置 -->
+                <ui:CardExpander Header="🖥️ 模式 A (Windows)" IsExpanded="True" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="模式名称:" Margin="0,0,0,5"/>
+                        <ui:TextBox x:Name="ModeAName" PlaceholderText="例如: Windows 办公模式" Margin="0,0,0,10"/>
+                        
+                        <Label Content="触发条件 (VCP 输入码):"/>
+                        <StackPanel x:Name="ModeATriggersPanel" Orientation="Vertical" Margin="0,0,0,10"/>
+                        <TextBlock Text="提示: DP=15, HDMI1=17, USB-C=27" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,10"/>
+
+                        <Label Content="激活时动作:"/>
+                        <TextBlock Text="切换音频设备:" FontSize="12"/>
+                        <ComboBox x:Name="ModeAAudioCombo" DisplayMemberPath="Name" Margin="0,0,0,10"/>
+                        
+                        <TextBlock Text="新窗口移动到:" FontSize="12"/>
+                        <ComboBox x:Name="ModeAWindowCombo" Margin="0,0,0,10">
+                            <ComboBoxItem Content="不自动移动 (保持默认)" Tag="None"/>
+                            <ComboBoxItem Content="主显示器 (Primary)" Tag="Primary"/>
+                            <ComboBoxItem Content="副显示器 (Secondary)" Tag="Secondary"/>
+                        </ComboBox>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <!-- 模式 B 设置 -->
+                <ui:CardExpander Header="🎮 模式 B (PS5)" IsExpanded="False" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="模式名称:" Margin="0,0,0,5"/>
+                        <ui:TextBox x:Name="ModeBName" PlaceholderText="例如: PS5 游戏模式" Margin="0,0,0,10"/>
+
+                        <Label Content="触发条件 (VCP 输入码):"/>
+                        <StackPanel x:Name="ModeBTriggersPanel" Orientation="Vertical" Margin="0,0,0,10"/>
+                        
+                        <Label Content="激活时动作:"/>
+                        <TextBlock Text="切换音频设备:" FontSize="12"/>
+                        <ComboBox x:Name="ModeBAudioCombo" DisplayMemberPath="Name" Margin="0,0,0,10"/>
+
+                        <TextBlock Text="新窗口移动到:" FontSize="12"/>
+                        <ComboBox x:Name="ModeBWindowCombo" Margin="0,0,0,10">
+                            <ComboBoxItem Content="不自动移动 (保持默认)" Tag="None"/>
+                            <ComboBoxItem Content="主显示器 (Primary)" Tag="Primary"/>
+                            <ComboBoxItem Content="副显示器 (Secondary)" Tag="Secondary"/>
+                        </ComboBox>
+                    </StackPanel>
+                </ui:CardExpander>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 底部按钮 -->
+        <Border Grid.Row="2" Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}" Padding="20,10">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button Content="取消" Appearance="Secondary" Click="CancelButton_Click" Width="80" Margin="0,0,10,0"/>
+                <ui:Button Content="保存" Appearance="Primary" Click="SaveButton_Click" Width="80"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</ui:FluentWindow>
