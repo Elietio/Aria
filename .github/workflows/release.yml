@@ -27,13 +27,11 @@ jobs:
       run: |
         dotnet publish src/ScreenBridge.App/ScreenBridge.App.csproj `
           -c Release `
-          -r win-x64 `
           --self-contained false `
-          -p:PublishSingleFile=true `
-          -p:EnableCompressionInSingleFile=true `
+          -p:PublishSingleFile=false `
           -o ./publish-lite
-        Write-Host "Framework-dependent build size:"
-        Get-ChildItem ./publish-lite/*.exe | Select-Object Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,2)}}
+        Write-Host "Framework-dependent build contents:"
+        Get-ChildItem ./publish-lite/*.exe, ./publish-lite/*.dll | Select-Object Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,2)}}
 
     - name: Publish Self-Contained (大体积，无需安装 .NET)
       run: |
@@ -50,7 +48,7 @@ jobs:
 
     - name: Create Release Archives
       run: |
-        Compress-Archive -Path ./publish-lite/ScreenBridge.App.exe -DestinationPath ./ScreenBridge-${{ github.ref_name }}-lite.zip
+        Compress-Archive -Path ./publish-lite/* -DestinationPath ./ScreenBridge-${{ github.ref_name }}-lite.zip
         Compress-Archive -Path ./publish-full/ScreenBridge.App.exe -DestinationPath ./ScreenBridge-${{ github.ref_name }}-full.zip
         Write-Host "Release archives:"
         Get-ChildItem ./*.zip | Select-Object Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,2)}}
