@@ -86,6 +86,7 @@ public class ModeManager : IDisposable
 
         _currentMode = AppMode.PS5Mode;
         await ApplyModeProfileAsync(_config.ModeB);
+        MoveAppWindow(_config.ModeB.AppWindowTargetMonitor);
         OnModeChanged(AppMode.PS5Mode);
     }
 
@@ -99,6 +100,7 @@ public class ModeManager : IDisposable
 
         _currentMode = AppMode.WindowsMode;
         await ApplyModeProfileAsync(_config.ModeA);
+        MoveAppWindow(_config.ModeA.AppWindowTargetMonitor);
         OnModeChanged(AppMode.WindowsMode);
     }
 
@@ -115,13 +117,19 @@ public class ModeManager : IDisposable
 
         // 2. 窗口自动移动规则
         MonitorInfo? targetMonitor = null;
-        if (string.Equals(profile.TargetWindowMonitor, "Primary", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(profile.TargetWindowMonitor, "Primary", StringComparison.OrdinalIgnoreCase) || 
+            string.Equals(profile.TargetWindowMonitor, "Main", StringComparison.OrdinalIgnoreCase))
         {
             targetMonitor = _monitorService.GetPrimaryMonitor();
         }
         else if (string.Equals(profile.TargetWindowMonitor, "Secondary", StringComparison.OrdinalIgnoreCase))
         {
             targetMonitor = _monitorService.GetSecondaryMonitor();
+        }
+        else if (!string.IsNullOrEmpty(profile.TargetWindowMonitor) && profile.TargetWindowMonitor != "None")
+        {
+             // 尝试匹配具体名称
+             targetMonitor = _monitorService.GetAllMonitors().FirstOrDefault(m => m.DeviceName == profile.TargetWindowMonitor || m.FriendlyName == profile.TargetWindowMonitor);
         }
 
         if (targetMonitor != null)
@@ -182,11 +190,22 @@ public class ModeManager : IDisposable
                 System.Console.WriteLine($"[DDC] Failed to read input from {targetMonitor.FriendlyName} (Failures: {_consecutiveDdcFailures})");
                 
                 // 如果在 Windows 模式下且连续失败（通常连续 2 次即可确认），判定为显示器已切走
-                if (_currentMode == AppMode.WindowsMode && _config.SwitchToPS5OnDDCLoss && _consecutiveDdcFailures >= 2)
+                // 如果在 Windows 模式下且连续失败（通常连续 2 次即可确认），判定为显示器已切走
+                if (_currentMode == AppMode.WindowsMode && _consecutiveDdcFailures >= 2)
                 {
-                    System.Console.WriteLine($"[DDC] Signal lost in Windows Mode. Assuming switch to PS5.");
-                    _consecutiveDdcFailures = 0; // 切换前重置
-                    _ = SwitchToPS5ModeAsync();
+                    System.Console.WriteLine($"[DDC] Signal lost in Windows Mode. Action: {_config.DdcLossAction}");
+                    
+                    if (_config.DdcLossAction == AppConfig.DDCLossAction.SwitchToModeB)
+                    {
+                        _consecutiveDdcFailures = 0; // 切换前重置
+                        _ = SwitchToPS5ModeAsync();
+                    }
+                    else if (_config.DdcLossAction == AppConfig.DDCLossAction.SwitchToModeA)
+                    {
+                        _consecutiveDdcFailures = 0;
+                        _ = SwitchToWindowsModeAsync();
+                    }
+                    // DoNothing does nothing
                 }
                 return;
             }
@@ -219,6 +238,68 @@ public class ModeManager : IDisposable
         catch (Exception ex)
         {
             System.Console.WriteLine($"[DDC] Error: {ex.Message}");
+        }
+    }
+
+    private void MoveAppWindow(string targetMonitor)
+    {
+        if (string.IsNullOrEmpty(targetMonitor) || targetMonitor == "None") return;
+
+        try
+        {
+            // 在 WPF 主线程操作窗口
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                var mainWindow = System.Windows.Application.Current.MainWindow;
+                if (mainWindow == null) return;
+
+                MonitorInfo? target = null;
+                if (targetMonitor == "Main" || targetMonitor == "Primary")
+                {
+                    target = _monitorService.GetPrimaryMonitor();
+                }
+                else if (targetMonitor == "Secondary")
+                {
+                    // 简单的获取非主显示器逻辑
+                    target = _monitorService.GetAllMonitors().FirstOrDefault(m => !m.IsPrimary);
+                }
+                else
+                {
+                    // 尝试匹配名称
+                     target = _monitorService.GetAllMonitors().FirstOrDefault(m => m.DeviceName == targetMonitor || m.FriendlyName == targetMonitor);
+                }
+
+                if (target != null)
+                {
+                    // DPI 感知处理
+                    var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(mainWindow);
+                    double scaleX = dpi.DpiScaleX;
+                    double scaleY = dpi.DpiScaleY;
+
+                    // 将显示器坐标(像素)转换为 WPF 坐标(DIP)
+                    double workLeftDip = target.WorkLeft / scaleX;
+                    double workTopDip = target.WorkTop / scaleY;
+                    double workWidthDip = target.WorkWidth / scaleX;
+                    double workHeightDip = target.WorkHeight / scaleY;
+
+                    double targetX = workLeftDip + (workWidthDip - mainWindow.ActualWidth) / 2;
+                    double targetY = workTopDip + (workHeightDip - mainWindow.ActualHeight) / 2;
+                    
+                    mainWindow.Left = targetX;
+                    mainWindow.Top = targetY;
+                    
+                    // 确保窗口可见
+                    if (mainWindow.WindowState == System.Windows.WindowState.Minimized)
+                    {
+                        mainWindow.WindowState = System.Windows.WindowState.Normal;
+                    }
+                    mainWindow.Activate();
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine($"[Window] Failed to move app window: {ex.Message}");
         }
     }
 

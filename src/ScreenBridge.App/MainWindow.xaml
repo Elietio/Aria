@@ -8,8 +8,9 @@
         xmlns:local="clr-namespace:ScreenBridge.App"
         mc:Ignorable="d"
         Title="ScreenBridge" 
-        Height="600" Width="800"
+        Height="Auto" Width="800"
         MinHeight="500" MinWidth="700"
+        SizeToContent="Height" ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen"
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="Mica"
@@ -25,14 +26,15 @@
         <ui:TitleBar Grid.Row="0" Title="ScreenBridge" ShowMaximize="True" ShowMinimize="True"/>
 
         <!-- 主内容区域 -->
-        <Grid Grid.Row="1" Margin="24" VerticalAlignment="Top">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Grid Margin="24" VerticalAlignment="Top">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
             <!-- 当前模式状态卡片 -->
             <ui:Card Grid.Row="0" Margin="0,0,0,16">
@@ -185,6 +187,8 @@
         </Grid>
         
         <!-- 系统托盘图标 -->
+
+        </ScrollViewer>
         <tb:TaskbarIcon x:Name="TrayIcon"
                         ToolTipText="ScreenBridge"
                         TrayLeftMouseDoubleClick="TrayShow_Click">

@@ -28,8 +28,12 @@
                         <TextBlock Text="程序会持续检测这台显示器的输入源变化，以触发模式切换。" 
                                    FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
                         
-                        <ui:ToggleSwitch x:Name="SwitchOnLossToggle" Content="DDC 信号由于切源断开时，自动切到模式 B (兼容 LG)" 
-                                         Margin="0,0,0,10" FontSize="12"/>
+                        <TextBlock Text="当 DDC 信号丢失时的行为 (兼容 LG):" FontSize="12" Margin="0,0,0,5"/>
+                        <ComboBox x:Name="DdcLossActionCombo" Margin="0,0,0,10">
+                            <ComboBoxItem Content="切换到 PS5 模式 (推荐)" Tag="SwitchToModeB"/>
+                            <ComboBoxItem Content="切换到 Windows 模式" Tag="SwitchToModeA"/>
+                            <ComboBoxItem Content="保持当前模式 (不切换)" Tag="DoNothing"/>
+                        </ComboBox>
 
                         <Grid>
                              <Grid.ColumnDefinitions>
@@ -62,11 +66,10 @@
                         <ComboBox x:Name="ModeAAudioCombo" DisplayMemberPath="Name" Margin="0,0,0,10"/>
                         
                         <TextBlock Text="新窗口移动到:" FontSize="12"/>
-                        <ComboBox x:Name="ModeAWindowCombo" Margin="0,0,0,10">
-                            <ComboBoxItem Content="不自动移动 (保持默认)" Tag="None"/>
-                            <ComboBoxItem Content="主显示器 (Primary)" Tag="Primary"/>
-                            <ComboBoxItem Content="副显示器 (Secondary)" Tag="Secondary"/>
-                        </ComboBox>
+                        <ComboBox x:Name="ModeAWindowCombo" Margin="0,0,0,10"/>
+
+                        <TextBlock Text="程序窗口移动到:" FontSize="12"/>
+                        <ComboBox x:Name="ModeAAppWindowCombo" Margin="0,0,0,10"/>
                     </StackPanel>
                 </ui:CardExpander>
 
@@ -84,11 +87,10 @@
                         <ComboBox x:Name="ModeBAudioCombo" DisplayMemberPath="Name" Margin="0,0,0,10"/>
 
                         <TextBlock Text="新窗口移动到:" FontSize="12"/>
-                        <ComboBox x:Name="ModeBWindowCombo" Margin="0,0,0,10">
-                            <ComboBoxItem Content="不自动移动 (保持默认)" Tag="None"/>
-                            <ComboBoxItem Content="主显示器 (Primary)" Tag="Primary"/>
-                            <ComboBoxItem Content="副显示器 (Secondary)" Tag="Secondary"/>
-                        </ComboBox>
+                        <ComboBox x:Name="ModeBWindowCombo" Margin="0,0,0,10"/>
+
+                        <TextBlock Text="程序窗口移动到:" FontSize="12"/>
+                        <ComboBox x:Name="ModeBAppWindowCombo" Margin="0,0,0,10"/>
                     </StackPanel>
                 </ui:CardExpander>
 

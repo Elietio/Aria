@@ -56,7 +56,7 @@ public partial class RulesWindow : FluentWindow
         }
 
         // 2. 加载设置逻辑
-        SwitchOnLossToggle.IsChecked = _config.SwitchToPS5OnDDCLoss;
+        SelectComboBoxByTag(DdcLossActionCombo, _config.DdcLossAction.ToString());
 
         // 3. 加载音频设备
         var audioDevices = await _audioService.GetPlaybackDevicesAsync();
@@ -70,7 +70,9 @@ public partial class RulesWindow : FluentWindow
         var modeAAudio = audioList.FirstOrDefault(a => a.Name == _config.ModeA.TargetAudioDeviceName);
         if (modeAAudio != null) ModeAAudioCombo.SelectedItem = modeAAudio;
         // 窗口目标
-        SelectComboBoxByTag(ModeAWindowCombo, _config.ModeA.TargetWindowMonitor);
+        // 窗口目标
+        PopulateAppWindowCombo(ModeAWindowCombo, monitors, _config.ModeA.TargetWindowMonitor);
+        PopulateAppWindowCombo(ModeAAppWindowCombo, monitors, _config.ModeA.AppWindowTargetMonitor);
         // 触发条件
         CreateTriggerCheckboxes(ModeATriggersPanel, _config.ModeA.TriggerInputs);
 
@@ -80,7 +82,9 @@ public partial class RulesWindow : FluentWindow
         var modeBAudio = audioList.FirstOrDefault(a => a.Name == _config.ModeB.TargetAudioDeviceName);
         if (modeBAudio != null) ModeBAudioCombo.SelectedItem = modeBAudio;
         // 窗口目标
-        SelectComboBoxByTag(ModeBWindowCombo, _config.ModeB.TargetWindowMonitor);
+        // 窗口目标
+        PopulateAppWindowCombo(ModeBWindowCombo, monitors, _config.ModeB.TargetWindowMonitor);
+        PopulateAppWindowCombo(ModeBAppWindowCombo, monitors, _config.ModeB.AppWindowTargetMonitor);
         // 触发条件
         CreateTriggerCheckboxes(ModeBTriggersPanel, _config.ModeB.TriggerInputs);
 
@@ -129,6 +133,34 @@ public partial class RulesWindow : FluentWindow
         return list;
     }
 
+    private void PopulateAppWindowCombo(ComboBox combo, IEnumerable<MonitorInfo> monitors, string currentSelection)
+    {
+        combo.Items.Clear();
+        
+        // 默认选项
+        combo.Items.Add(new ComboBoxItem { Content = "不移动", Tag = "None" });
+        // combo.Items.Add(new ComboBoxItem { Content = "主显示器", Tag = "Main" });
+        // combo.Items.Add(new ComboBoxItem { Content = "副显示器 (非主屏)", Tag = "Secondary" });
+
+        // 具体显示器
+        foreach (var m in monitors)
+        {
+            // 避免重复显示泛型名称，如果有 FriendlyName 最好
+            string name = !string.IsNullOrEmpty(m.FriendlyName) ? m.FriendlyName : "显示器";
+            string tag = !string.IsNullOrEmpty(m.FriendlyName) ? m.FriendlyName : m.DeviceName;
+            
+            // 标识是否为主/副
+            string suffix = m.IsPrimary ? " (当前主)" : "";
+            
+            combo.Items.Add(new ComboBoxItem { 
+                Content = $"{name}{suffix}", 
+                Tag = tag 
+            });
+        }
+
+        SelectComboBoxByTag(combo, currentSelection);
+    }
+
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
         // 1. DDC Monitor
@@ -142,7 +174,15 @@ public partial class RulesWindow : FluentWindow
                 : monitor.DeviceName;
         }
 
-        _config.SwitchToPS5OnDDCLoss = SwitchOnLossToggle.IsChecked ?? false;
+
+        
+        if (DdcLossActionCombo.SelectedItem is ComboBoxItem lossItem && lossItem.Tag != null)
+        {
+            if (Enum.TryParse<AppConfig.DDCLossAction>(lossItem.Tag.ToString(), out var action))
+            {
+                _config.DdcLossAction = action;
+            }
+        }
 
         // 2. Mode A
         _config.ModeA.Name = ModeAName.Text;
@@ -153,6 +193,10 @@ public partial class RulesWindow : FluentWindow
         if (ModeAWindowCombo.SelectedItem is ComboBoxItem winA && winA.Tag != null)
         {
             _config.ModeA.TargetWindowMonitor = winA.Tag.ToString() ?? "None";
+        }
+        if (ModeAAppWindowCombo.SelectedItem is ComboBoxItem appWinA && appWinA.Tag != null)
+        {
+            _config.ModeA.AppWindowTargetMonitor = appWinA.Tag.ToString() ?? "None";
         }
         _config.ModeA.TriggerInputs = GetSelectedTriggers(ModeATriggersPanel);
 
@@ -165,6 +209,10 @@ public partial class RulesWindow : FluentWindow
         if (ModeBWindowCombo.SelectedItem is ComboBoxItem winB && winB.Tag != null)
         {
             _config.ModeB.TargetWindowMonitor = winB.Tag.ToString() ?? "None";
+        }
+        if (ModeBAppWindowCombo.SelectedItem is ComboBoxItem appWinB && appWinB.Tag != null)
+        {
+            _config.ModeB.AppWindowTargetMonitor = appWinB.Tag.ToString() ?? "None";
         }
         _config.ModeB.TriggerInputs = GetSelectedTriggers(ModeBTriggersPanel);
 
@@ -189,10 +237,15 @@ public partial class RulesWindow : FluentWindow
         {
             try
             {
-                var result = _ddcService.GetCurrentInputSource(monitor.Handle);
+                // 使用 MonitorInfo 对象
+                var result = _ddcService.GetCurrentInputSource(monitor);
                 if (result.HasValue)
                 {
-                    DDCReadoutText.Text = $"0x{result.Value.RawValue:X2} ({result.Value.Source})";
+                    // 尝试匹配已知输入源名称
+                    var known = _knownInputs.FirstOrDefault(k => k.Code == result.Value);
+                    string name = known.Name != null ? known.Name : "未知设备";
+                    
+                    DDCReadoutText.Text = $"0x{result.Value:X2} ({result.Value}) - {name}";
                     DDCReadoutText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.LightGreen);
                 }
                 else

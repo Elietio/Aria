@@ -29,4 +29,8 @@ public class ModeProfile
     /// 是否在这个模式下自动移动新窗口
     /// </summary>
     public bool EnableWindowAutoMove => TargetWindowMonitor != "None";
+    /// <summary>
+    /// ScreenBridge 主程序窗口的目标位置 (Main, Primary, Side, None)
+    /// </summary>
+    public string AppWindowTargetMonitor { get; set; } = "None";
 }

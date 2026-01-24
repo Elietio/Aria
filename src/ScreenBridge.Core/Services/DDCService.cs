@@ -165,4 +165,57 @@ public class DDCService
             _ => InputSource.Unknown
         };
     }
+    /// <summary>
+    /// 获取指定显示器 (MonitorInfo) 的当前 VCP 输入源 (0x60)
+    /// </summary>
+    public int? GetCurrentInputSource(MonitorInfo monitor)
+    {
+        return GetVCPValue(monitor, VCP_INPUT_SELECT);
+    }
+
+    /// <summary>
+    /// 读取指定显示器的 VCP 值 (通过遍历所有物理显示器匹配)
+    /// </summary>
+    /// <summary>
+    /// 读取指定显示器的 VCP 值
+    /// </summary>
+    public int? GetVCPValue(MonitorInfo monitor, byte vcpCode)
+    {
+        if (monitor.Handle == IntPtr.Zero) return null;
+
+        int? result = null;
+        uint count = 0;
+
+        try
+        {
+            if (GetNumberOfPhysicalMonitorsFromHMONITOR(monitor.Handle, out count) && count > 0)
+            {
+                var physicalMonitors = new PHYSICAL_MONITOR[count];
+                if (GetPhysicalMonitorsFromHMONITOR(monitor.Handle, count, physicalMonitors))
+                {
+                    // 通常一个 HMONITOR 对应一个物理显示器，但如果是镜像模式可能多个
+                    // 我们只读取第一个，或者遍历尝试读取直到成功
+                    foreach (var pm in physicalMonitors)
+                    {
+                        if (GetVCPFeatureAndVCPFeatureReply(pm.hPhysicalMonitor, vcpCode, out _, out uint currentValue, out _))
+                        {
+                            result = (int)currentValue;
+                            break; // 读取成功即停止
+                        }
+                    }
+                    DestroyPhysicalMonitors(count, physicalMonitors);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore
+        }
+        
+        return result;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumDelegate lpfnEnum, IntPtr dwData);
+    private delegate bool MonitorEnumDelegate(IntPtr hMonitor, IntPtr hdcMonitor, IntPtr lprcMonitor, IntPtr dwData);
 }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.IO;
 
 namespace ScreenBridge.Core;
 
@@ -58,9 +59,16 @@ public class AppConfig
     public int DDCCheckIntervalSeconds { get; set; } = 5;
 
     /// <summary>
-    /// 当 DDC 读取失败时是否自动切换到模式 B (针对某些显示器切走后关闭 DDC 的情况)
+    /// 当 DDC 读取失败时的行为 (针对某些显示器切走后关闭 DDC 的情况)
     /// </summary>
-    public bool SwitchToPS5OnDDCLoss { get; set; } = true;
+    public DDCLossAction DdcLossAction { get; set; } = DDCLossAction.SwitchToModeB;
+
+    public enum DDCLossAction
+    {
+        DoNothing,
+        SwitchToModeA,
+        SwitchToModeB
+    }
 
     /// <summary>
     /// 是否启用模式切换 Toast 通知
