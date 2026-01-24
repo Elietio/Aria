@@ -83,6 +83,9 @@ public partial class RulesWindow : FluentWindow
         SelectComboBoxByTag(ModeBWindowCombo, _config.ModeB.TargetWindowMonitor);
         // 触发条件
         CreateTriggerCheckboxes(ModeBTriggersPanel, _config.ModeB.TriggerInputs);
+
+        // 5. 加载热键和通知设置
+        LoadHotkeySettings();
     }
 
     private void CreateTriggerCheckboxes(StackPanel panel, List<int> selectedCodes)
@@ -165,6 +168,9 @@ public partial class RulesWindow : FluentWindow
         }
         _config.ModeB.TriggerInputs = GetSelectedTriggers(ModeBTriggersPanel);
 
+        // 4. 保存热键和通知设置
+        SaveHotkeySettings();
+
         // Save
         _config.Save();
 
@@ -213,4 +219,231 @@ public partial class RulesWindow : FluentWindow
         DialogResult = false;
         Close();
     }
+
+    #region Hotkey Settings
+
+    // 临时存储正在编辑的热键
+    private uint _tempSwitchModeModifiers;
+    private uint _tempSwitchModeKey;
+    private uint _tempWindowOverviewModifiers;
+    private uint _tempWindowOverviewKey;
+    private bool _isRecordingHotkey = false;
+
+    private void LoadHotkeySettings()
+    {
+        _tempSwitchModeModifiers = _config.SwitchModeModifiers;
+        _tempSwitchModeKey = _config.SwitchModeKey;
+        _tempWindowOverviewModifiers = _config.WindowOverviewModifiers;
+        _tempWindowOverviewKey = _config.WindowOverviewKey;
+
+        SwitchModeHotkeyBox.Text = FormatHotkey(_tempSwitchModeModifiers, _tempSwitchModeKey);
+        WindowOverviewHotkeyBox.Text = FormatHotkey(_tempWindowOverviewModifiers, _tempWindowOverviewKey);
+        
+        // 加载通知设置
+        EnableToastToggle.IsChecked = _config.EnableToastNotifications;
+    }
+
+    private void SaveHotkeySettings()
+    {
+        _config.SwitchModeModifiers = _tempSwitchModeModifiers;
+        _config.SwitchModeKey = _tempSwitchModeKey;
+        _config.WindowOverviewModifiers = _tempWindowOverviewModifiers;
+        _config.WindowOverviewKey = _tempWindowOverviewKey;
+        _config.EnableToastNotifications = EnableToastToggle.IsChecked ?? true;
+    }
+
+    private void HotkeyBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.TextBox textBox)
+        {
+            textBox.Text = "按下新的快捷键...";
+            textBox.Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromArgb(60, 100, 149, 237));
+            _isRecordingHotkey = true;
+        }
+    }
+
+    private void HotkeyBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.TextBox textBox)
+        {
+            textBox.Background = System.Windows.Media.Brushes.Transparent;
+            _isRecordingHotkey = false;
+            
+            // 恢复显示当前热键
+            string tag = textBox.Tag?.ToString() ?? "";
+            if (tag == "SwitchMode")
+            {
+                textBox.Text = FormatHotkey(_tempSwitchModeModifiers, _tempSwitchModeKey);
+            }
+            else if (tag == "WindowOverview")
+            {
+                textBox.Text = FormatHotkey(_tempWindowOverviewModifiers, _tempWindowOverviewKey);
+            }
+        }
+    }
+
+    private void HotkeyBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (!_isRecordingHotkey) return;
+
+        e.Handled = true;
+
+        // 忽略单独的修饰键
+        if (e.Key == System.Windows.Input.Key.LeftCtrl || e.Key == System.Windows.Input.Key.RightCtrl ||
+            e.Key == System.Windows.Input.Key.LeftAlt || e.Key == System.Windows.Input.Key.RightAlt ||
+            e.Key == System.Windows.Input.Key.LeftShift || e.Key == System.Windows.Input.Key.RightShift ||
+            e.Key == System.Windows.Input.Key.LWin || e.Key == System.Windows.Input.Key.RWin ||
+            e.Key == System.Windows.Input.Key.System)
+        {
+            return;
+        }
+
+        // 获取修饰键状态
+        uint modifiers = 0;
+        if (System.Windows.Input.Keyboard.IsKeyDown(System.Windows.Input.Key.LeftCtrl) ||
+            System.Windows.Input.Keyboard.IsKeyDown(System.Windows.Input.Key.RightCtrl))
+        {
+            modifiers |= (uint)HotkeyService.ModifierKeys.Ctrl;
+        }
+        if (System.Windows.Input.Keyboard.IsKeyDown(System.Windows.Input.Key.LeftAlt) ||
+            System.Windows.Input.Keyboard.IsKeyDown(System.Windows.Input.Key.RightAlt))
+        {
+            modifiers |= (uint)HotkeyService.ModifierKeys.Alt;
+        }
+        if (System.Windows.Input.Keyboard.IsKeyDown(System.Windows.Input.Key.LeftShift) ||
+            System.Windows.Input.Keyboard.IsKeyDown(System.Windows.Input.Key.RightShift))
+        {
+            modifiers |= (uint)HotkeyService.ModifierKeys.Shift;
+        }
+
+        // 要求至少有一个修饰键
+        if (modifiers == 0)
+        {
+            HotkeyConflictWarning.Text = "⚠️ 快捷键需要包含 Ctrl、Alt 或 Shift 修饰键";
+            HotkeyConflictWarning.Visibility = Visibility.Visible;
+            return;
+        }
+
+        // 转换 WPF Key 到 Virtual Key Code
+        uint vkCode = (uint)System.Windows.Input.KeyInterop.VirtualKeyFromKey(e.Key);
+
+        if (sender is System.Windows.Controls.TextBox textBox)
+        {
+            string tag = textBox.Tag?.ToString() ?? "";
+            
+            // 检查冲突
+            if (CheckHotkeyConflict(modifiers, vkCode, tag))
+            {
+                HotkeyConflictWarning.Text = "⚠️ 此快捷键已被使用，请选择其他组合";
+                HotkeyConflictWarning.Visibility = Visibility.Visible;
+                return;
+            }
+
+            HotkeyConflictWarning.Visibility = Visibility.Collapsed;
+
+            if (tag == "SwitchMode")
+            {
+                _tempSwitchModeModifiers = modifiers;
+                _tempSwitchModeKey = vkCode;
+            }
+            else if (tag == "WindowOverview")
+            {
+                _tempWindowOverviewModifiers = modifiers;
+                _tempWindowOverviewKey = vkCode;
+            }
+
+            textBox.Text = FormatHotkey(modifiers, vkCode);
+            textBox.Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromArgb(60, 50, 205, 50));
+            
+            // 自动取消焦点
+            System.Windows.Input.Keyboard.ClearFocus();
+        }
+    }
+
+    private void ResetHotkey_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Wpf.Ui.Controls.Button button)
+        {
+            string tag = button.Tag?.ToString() ?? "";
+            
+            if (tag == "SwitchMode")
+            {
+                _tempSwitchModeModifiers = (uint)(HotkeyService.ModifierKeys.Ctrl | HotkeyService.ModifierKeys.Alt);
+                _tempSwitchModeKey = HotkeyService.VirtualKeys.VK_S;
+                SwitchModeHotkeyBox.Text = FormatHotkey(_tempSwitchModeModifiers, _tempSwitchModeKey);
+            }
+            else if (tag == "WindowOverview")
+            {
+                _tempWindowOverviewModifiers = (uint)(HotkeyService.ModifierKeys.Ctrl | HotkeyService.ModifierKeys.Alt);
+                _tempWindowOverviewKey = HotkeyService.VirtualKeys.VK_W;
+                WindowOverviewHotkeyBox.Text = FormatHotkey(_tempWindowOverviewModifiers, _tempWindowOverviewKey);
+            }
+
+            HotkeyConflictWarning.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private bool CheckHotkeyConflict(uint modifiers, uint key, string excludeTag)
+    {
+        if (excludeTag != "SwitchMode" && 
+            _tempSwitchModeModifiers == modifiers && _tempSwitchModeKey == key)
+        {
+            return true;
+        }
+        if (excludeTag != "WindowOverview" && 
+            _tempWindowOverviewModifiers == modifiers && _tempWindowOverviewKey == key)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    private string FormatHotkey(uint modifiers, uint key)
+    {
+        var parts = new List<string>();
+        
+        if ((modifiers & (uint)HotkeyService.ModifierKeys.Ctrl) != 0)
+            parts.Add("Ctrl");
+        if ((modifiers & (uint)HotkeyService.ModifierKeys.Alt) != 0)
+            parts.Add("Alt");
+        if ((modifiers & (uint)HotkeyService.ModifierKeys.Shift) != 0)
+            parts.Add("Shift");
+        
+        // 转换 Virtual Key 到可读名称
+        string keyName = GetKeyName(key);
+        parts.Add(keyName);
+        
+        return string.Join(" + ", parts);
+    }
+
+    private string GetKeyName(uint vkCode)
+    {
+        // 常用键映射
+        return vkCode switch
+        {
+            >= 0x30 and <= 0x39 => ((char)vkCode).ToString(), // 0-9
+            >= 0x41 and <= 0x5A => ((char)vkCode).ToString(), // A-Z
+            >= 0x70 and <= 0x7B => $"F{vkCode - 0x6F}",       // F1-F12
+            0x20 => "Space",
+            0x0D => "Enter",
+            0x1B => "Esc",
+            0x09 => "Tab",
+            0xBD => "-",
+            0xBB => "=",
+            0xDC => "\\",
+            0xC0 => "`",
+            0xDB => "[",
+            0xDD => "]",
+            0xBA => ";",
+            0xDE => "'",
+            0xBC => ",",
+            0xBE => ".",
+            0xBF => "/",
+            _ => $"Key(0x{vkCode:X2})"
+        };
+    }
+
+    #endregion
 }

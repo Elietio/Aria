@@ -24,6 +24,10 @@ public partial class MainWindow : FluentWindow
     private bool _isExplicitExit;
 
     private const int WM_HOTKEY = 0x0312;
+    private IntPtr _lastIconHandle = IntPtr.Zero;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+    private static extern bool DestroyIcon(IntPtr handle);
 
     public MainWindow()
     {
@@ -99,6 +103,9 @@ public partial class MainWindow : FluentWindow
             _refreshTimer.Start();
             await RefreshStatusAsync();
 
+            // 初始化界面和托盘图标
+            UpdateUIForMode(_modeManager.CurrentMode);
+
             // 热键功能暂时禁用，因为可能导致崩溃
             // 用户可以通过UI按钮来切换模式
         }
@@ -150,6 +157,7 @@ public partial class MainWindow : FluentWindow
         SaveSettings();
 
         // 清理资源
+        TrayIcon.Dispose();
         _hotkeyService.Dispose();
         _modeManager.Dispose();
         _audioService.Dispose();
@@ -313,9 +321,18 @@ public partial class MainWindow : FluentWindow
             ModeDescription.Text = _config.ModeB.Description;
             SwitchModeButton.Content = $"切换到 {_config.ModeA.Name}";
             
-            // Icon handling (Simple mapping or look up from config icon string)
-            // For now hardcode or try to parse Icon string if possible
-             try { ModeIcon.Symbol = (Wpf.Ui.Controls.SymbolRegular)Enum.Parse(typeof(Wpf.Ui.Controls.SymbolRegular), _config.ModeB.Icon); } catch { ModeIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.XboxController24; }
+            // 更新模式图标为游戏手柄
+            ModeIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.XboxController24;
+            ModeIcon.Foreground = System.Windows.Media.Brushes.White;
+            
+            var ps5Gradient = new System.Windows.Media.LinearGradientBrush();
+            ps5Gradient.StartPoint = new System.Windows.Point(0, 0);
+            ps5Gradient.EndPoint = new System.Windows.Point(1, 1);
+            ps5Gradient.GradientStops.Add(new System.Windows.Media.GradientStop(
+                System.Windows.Media.Color.FromRgb(0x7B, 0x1F, 0xA2), 0.0)); // Deep Purple
+            ps5Gradient.GradientStops.Add(new System.Windows.Media.GradientStop(
+                System.Windows.Media.Color.FromRgb(0x7C, 0x4D, 0xFF), 1.0)); // Deep Purple Accent
+            ModeIconBorder.Background = ps5Gradient;
         }
         else
         {
@@ -323,7 +340,18 @@ public partial class MainWindow : FluentWindow
             ModeDescription.Text = _config.ModeA.Description;
             SwitchModeButton.Content = $"切换到 {_config.ModeB.Name}";
             
-            try { ModeIcon.Symbol = (Wpf.Ui.Controls.SymbolRegular)Enum.Parse(typeof(Wpf.Ui.Controls.SymbolRegular), _config.ModeA.Icon); } catch { ModeIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.Desktop24; }
+            // 更新模式图标为桌面
+            ModeIcon.Symbol = Wpf.Ui.Controls.SymbolRegular.Desktop24;
+            ModeIcon.Foreground = System.Windows.Media.Brushes.White;
+            
+            var winGradient = new System.Windows.Media.LinearGradientBrush();
+            winGradient.StartPoint = new System.Windows.Point(0, 0);
+            winGradient.EndPoint = new System.Windows.Point(1, 1);
+            winGradient.GradientStops.Add(new System.Windows.Media.GradientStop(
+                System.Windows.Media.Color.FromRgb(0x19, 0x76, 0xD2), 0.0)); // Blue
+            winGradient.GradientStops.Add(new System.Windows.Media.GradientStop(
+                System.Windows.Media.Color.FromRgb(0x42, 0xA5, 0xF5), 1.0)); // Light Blue
+            ModeIconBorder.Background = winGradient;
         }
 
         // 更新窗口规则状态
@@ -340,6 +368,80 @@ public partial class MainWindow : FluentWindow
         
         // 模式切换后立即刷新状态
         _ = RefreshStatusAsync();
+
+        // 更新托盘图标
+        UpdateTrayIcon(mode);
+    }
+
+    private void UpdateTrayIcon(AppMode mode)
+    {
+        try
+        {
+            // 使用 System.Drawing 绘制托盘图标
+            using var bitmap = new System.Drawing.Bitmap(64, 64);
+            using var g = System.Drawing.Graphics.FromImage(bitmap);
+            
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+            // 渐变色定义
+            var color1 = mode == AppMode.PS5Mode
+                ? System.Drawing.Color.FromArgb(0x7B, 0x1F, 0xA2)
+                : System.Drawing.Color.FromArgb(0x19, 0x76, 0xD2);
+                
+            var color2 = mode == AppMode.PS5Mode
+                ? System.Drawing.Color.FromArgb(0x7C, 0x4D, 0xFF)
+                : System.Drawing.Color.FromArgb(0x42, 0xA5, 0xF5);
+
+            // 绘制渐变背景
+            using (var brush = new System.Drawing.Drawing2D.LinearGradientBrush(
+                new System.Drawing.Point(0, 0),
+                new System.Drawing.Point(64, 64),
+                color1, color2))
+            {
+                g.FillEllipse(brush, 0, 0, 63, 63);
+            }
+
+            // 绘制图标 (Segoe MDL2 Assets) - 白色
+            // Windows (Laptop): \xE7F4
+            // PS5 (Game): \xE7FC
+            string iconText = mode == AppMode.PS5Mode ? "\xE7FC" : "\xE7F4";
+            
+            using var font = new System.Drawing.Font("Segoe MDL2 Assets", 36, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel);
+            using var textBrush = new System.Drawing.SolidBrush(System.Drawing.Color.White);
+            
+            // 居中绘制
+            var textSize = g.MeasureString(iconText, font);
+            float x = (64 - textSize.Width) / 2;
+            float y = (64 - textSize.Height) / 2;
+            
+            // 微调位置
+            if (mode == AppMode.PS5Mode) y += 2; 
+
+            g.DrawString(iconText, font, textBrush, x, y);
+
+            // 转换为 Icon
+            var hIcon = bitmap.GetHicon();
+            var icon = System.Drawing.Icon.FromHandle(hIcon);
+            
+            // 设置托盘图标
+            TrayIcon.Icon = icon;
+
+            // 清理旧资源
+            if (_lastIconHandle != IntPtr.Zero)
+            {
+                DestroyIcon(_lastIconHandle);
+            }
+            _lastIconHandle = hIcon;
+            
+            TrayIcon.ToolTipText = mode == AppMode.PS5Mode 
+                ? $"ScreenBridge - {_config.ModeB.Name}" 
+                : $"ScreenBridge - {_config.ModeA.Name}";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[TrayIcon] Failed to update icon: {ex.Message}");
+        }
     }
 
     private async void SwitchModeButton_Click(object sender, RoutedEventArgs e)

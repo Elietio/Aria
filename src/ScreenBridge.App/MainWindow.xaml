@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:tb="http://www.hardcodet.net/taskbar"
         xmlns:local="clr-namespace:ScreenBridge.App"
         mc:Ignorable="d"
         Title="ScreenBridge" 
@@ -11,7 +12,8 @@
         MinHeight="500" MinWidth="700"
         WindowStartupLocation="CenterScreen"
         ExtendsContentIntoTitleBar="True"
-        WindowBackdropType="Mica">
+        WindowBackdropType="Mica"
+        StateChanged="FluentWindow_StateChanged">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -42,16 +44,15 @@
                     </Grid.ColumnDefinitions>
 
                     <Border Grid.Column="0" 
-                            Width="64" Height="64" 
-                            CornerRadius="32" 
+                            x:Name="ModeIconBorder"
+                            Width="72" Height="72" 
+                            CornerRadius="12" 
+                            Background="Transparent"
                             Margin="0,0,16,0">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#667eea" Offset="0"/>
-                                <GradientStop Color="#764ba2" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <ui:SymbolIcon x:Name="ModeIcon" Symbol="Desktop24" FontSize="32" Foreground="White"/>
+                        <ui:SymbolIcon x:Name="ModeIcon" 
+                                       Symbol="Desktop24"
+                                       FontSize="48"
+                                       Foreground="Gray"/>
                     </Border>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -182,5 +183,21 @@
                 </ui:Button>
             </Grid>
         </Grid>
+        
+        <!-- 系统托盘图标 -->
+        <tb:TaskbarIcon x:Name="TrayIcon"
+                        ToolTipText="ScreenBridge"
+                        TrayLeftMouseDoubleClick="TrayShow_Click">
+            <tb:TaskbarIcon.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="📺 显示主窗口" Click="TrayShow_Click"/>
+                    <Separator/>
+                    <MenuItem Header="🖥️ 切换到 Windows 模式" Click="TrayWindowsMode_Click"/>
+                    <MenuItem Header="🎮 切换到 PS5 模式" Click="TrayPS5Mode_Click"/>
+                    <Separator/>
+                    <MenuItem Header="❌ 退出" Click="TrayExit_Click"/>
+                </ContextMenu>
+            </tb:TaskbarIcon.ContextMenu>
+        </tb:TaskbarIcon>
     </Grid>
 </ui:FluentWindow>

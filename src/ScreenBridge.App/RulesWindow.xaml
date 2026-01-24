@@ -92,6 +92,64 @@
                     </StackPanel>
                 </ui:CardExpander>
 
+                <!-- 热键设置 -->
+                <ui:CardExpander Header="⌨️ 快捷键设置" IsExpanded="False" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="点击输入框后按下新的快捷键组合来更改热键" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   FontSize="12" TextWrapping="Wrap" Margin="0,0,0,15"/>
+                        
+                        <!-- 切换模式热键 -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="切换模式:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="SwitchModeHotkeyBox" Grid.Column="1" 
+                                     IsReadOnly="True" 
+                                     PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                                     GotFocus="HotkeyBox_GotFocus"
+                                     LostFocus="HotkeyBox_LostFocus"
+                                     Tag="SwitchMode"
+                                     Margin="0,0,8,0"/>
+                            <ui:Button Grid.Column="2" Content="重置" Appearance="Secondary" 
+                                        Padding="8,4" Click="ResetHotkey_Click" Tag="SwitchMode"/>
+                        </Grid>
+
+                        <!-- 窗口概览热键 -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="窗口概览:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="WindowOverviewHotkeyBox" Grid.Column="1" 
+                                     IsReadOnly="True"
+                                     PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                                     GotFocus="HotkeyBox_GotFocus"
+                                     LostFocus="HotkeyBox_LostFocus"
+                                     Tag="WindowOverview"
+                                     Margin="0,0,8,0"/>
+                            <ui:Button Grid.Column="2" Content="重置" Appearance="Secondary"
+                                        Padding="8,4" Click="ResetHotkey_Click" Tag="WindowOverview"/>
+                        </Grid>
+
+                        <TextBlock x:Name="HotkeyConflictWarning" 
+                                   Text="" Foreground="Orange" FontSize="12" 
+                                   TextWrapping="Wrap" Visibility="Collapsed" Margin="0,5,0,0"/>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <!-- 通知设置 -->
+                <ui:CardExpander Header="🔔 通知设置" IsExpanded="False" Margin="0,0,0,10">
+                    <StackPanel>
+                        <ui:ToggleSwitch x:Name="EnableToastToggle" Content="模式切换时显示 Toast 通知"/>
+                    </StackPanel>
+                </ui:CardExpander>
+
             </StackPanel>
         </ScrollViewer>
 

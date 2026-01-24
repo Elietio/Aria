@@ -63,6 +63,11 @@ public class AppConfig
     public bool SwitchToPS5OnDDCLoss { get; set; } = true;
 
     /// <summary>
+    /// 是否启用模式切换 Toast 通知
+    /// </summary>
+    public bool EnableToastNotifications { get; set; } = true;
+
+    /// <summary>
     /// 排除的进程名列表（不自动移动这些进程的窗口）
     /// </summary>
     public List<string> ExcludedProcesses { get; set; } = new();

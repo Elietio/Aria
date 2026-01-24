@@ -225,6 +225,15 @@ public class ModeManager : IDisposable
     protected virtual void OnModeChanged(AppMode mode)
     {
         ModeChanged?.Invoke(this, mode);
+
+        // 发送 Toast 通知
+        if (_config.EnableToastNotifications)
+        {
+            string modeName = mode == AppMode.WindowsMode 
+                ? _config.ModeA.Name 
+                : _config.ModeB.Name;
+            NotificationService.ShowModeChangeNotification(mode, modeName);
+        }
     }
 
     public void Dispose()
