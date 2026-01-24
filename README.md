@@ -2,6 +2,16 @@
 
 > 智能显示器模式切换工具 - 在 PC 和 PS5 之间无缝切换你的显示器设置
 
+
+<div align="center">
+  <img src="docs/images/app_icon.png" width="128" alt="App Icon" />
+  <br/>
+  
+  <img src="docs/images/mode_windows.svg" width="64" alt="Windows Mode" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/images/mode_ps5.svg" width="64" alt="PS5 Mode" />
+</div>
+
 ScreenBridge 是一款 Windows 桌面应用程序，专为同时使用 PC 和游戏主机（如 PS5）共享同一显示器的用户设计。它能自动检测显示器输入源变化，并智能切换音频设备、管理窗口位置，让你的多设备工作流程更加顺畅。
 
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet)
