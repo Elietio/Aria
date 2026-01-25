@@ -47,9 +47,30 @@ ScreenBridge 是一款 Windows 桌面应用程序，专为同时使用 PC 和游
 - `Ctrl + Alt + W`：打开窗口概览
 - *(可在设置中自定义热键)*
 
-## 📸 截图
+## 📸 截图 (Screenshots)
 
-*（应用界面展示 - 待添加）*
+<div align="center">
+  <img src="docs/images/screenshot_windows.png" width="800" alt="Windows Mode - Standard" />
+  <p><b>Windows 模式 (Moe Glass 主题)</b> - 优雅磨砂玻璃质感，显示器信息实时刷新</p>
+  <br/>
+  <img src="docs/images/screenshot_ps5_settings.png" width="800" alt="PS5 Mode - Settings" />
+  <p><b>PS5 模式 (Moe Clean 主题 + 规则配置)</b> - 沉浸式游戏体验，透明悬浮卡片</p>
+</div>
+
+## ✨ v1.1 新特性 (Updates)
+
+### 🎨 萌化主题引擎 (Visual Polish)
+- **双重风格**: 提供 **Moe Glass** (磨砂玻璃) 和 **Moe Clean** (极简透明) 两种截然不同的视觉体验。
+- **质感升级**: 深度集成 Windows 11 Mica 材质，卡片采用优雅的圆角和阴影处理。
+- **动态图标**: 状态栏和托盘图标现在是圆润的渐变风格，更具现代感。
+
+### 🛡️ 稳定性增强
+- **亮度防抖**: 优化了 DDC/CI 读取逻辑，增加缓存层，彻底消除了亮度数值闪烁 (--%) 的问题。
+- **配置迁移**: 智能检测配置文件版本，自动将旧版本不透明度参数迁移到最佳推荐值。
+
+### ⌨️ 体验优化
+- **音频选择器**: 主界面新增实时音频设备下拉列表，切换更直观。
+- **显示器详情**: 新增刷新率 (Hz) 和色彩深度 (Bit) 显示，主显示器高亮标记。
 
 ## 🚀 快速开始
 
