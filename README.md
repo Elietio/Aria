@@ -50,11 +50,11 @@ ScreenBridge 是一款 Windows 桌面应用程序，专为同时使用 PC 和游
 ## 📸 截图 (Screenshots)
 
 <div align="center">
-  <img src="docs/images/screenshot_windows.png" width="800" alt="Windows Mode - Standard" />
-  <p><b>Windows 模式 (Moe Glass 主题)</b> - 优雅磨砂玻璃质感，显示器信息实时刷新</p>
+  <img src="docs/images/screenshot_windows_moe.png" width="800" alt="Windows Mode - Moe" />
+  <p><b>Windows 模式 (蓝)</b> - 经典工作模式，搭配冷静的看板娘与呼吸光效</p>
   <br/>
-  <img src="docs/images/screenshot_ps5_settings.png" width="800" alt="PS5 Mode - Settings" />
-  <p><b>PS5 模式 (Moe Clean 主题 + 规则配置)</b> - 沉浸式游戏体验，透明悬浮卡片</p>
+  <img src="docs/images/screenshot_ps5_moe.png" width="800" alt="PS5 Mode - Moe" />
+  <p><b>PS5 模式 (粉)</b> - 沉浸式游戏体验，粉色主题激萌出击 🎮✨</p>
 </div>
 
 ## ✨ v1.2 新特性 (Updates)
