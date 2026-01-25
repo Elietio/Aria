@@ -85,17 +85,17 @@ public partial class RulesWindow : FluentWindow
         
         // 初始化背景材质选择
         UpdateBackdropComboForStyle(_config.Theme);
+        
+        // 初始化 Mascot Toggle
+        MascotToggle.IsChecked = _config.EnableMoeMascot;
+        VoiceToggle.IsChecked = _config.EnableMoeVoice;
+        MascotOpacitySlider.Value = _config.MascotOpacity;
+        UpdateMascotOpacityText();
+        UpdateMascotOpacityPanelVisibility();
 
         // 初始化可见性 (Classic 隐藏透明度和背景材质控件)
         bool showControls = _config.Theme != AppConfig.UIStyle.Classic;
-        if (OpacityControlPanel != null)
-        {
-            OpacityControlPanel.Visibility = showControls ? Visibility.Visible : Visibility.Collapsed;
-        }
-        if (BackdropCombo != null)
-        {
-            BackdropCombo.Visibility = showControls ? Visibility.Visible : Visibility.Collapsed;
-        }
+        UpdateMoeControlsVisibility(showControls);
 
         // 3. 加载音频设备
         var audioDevices = await _audioService.GetPlaybackDevicesAsync();
@@ -148,15 +148,23 @@ public partial class RulesWindow : FluentWindow
 
                 // 4. 更新控件状态 (Classic 隐藏 Slider 和 Backdrop)
                 bool showControls = newStyle != AppConfig.UIStyle.Classic;
-                if (OpacityControlPanel != null)
-                {
-                    OpacityControlPanel.Visibility = showControls ? Visibility.Visible : Visibility.Collapsed;
-                }
-                if (BackdropCombo != null)
-                {
-                    BackdropCombo.Visibility = showControls ? Visibility.Visible : Visibility.Collapsed;
-                }
+                UpdateMoeControlsVisibility(showControls);
             }
+        }
+    }
+
+    private void UpdateMoeControlsVisibility(bool visible)
+    {
+        var visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        if (OpacityControlPanel != null) OpacityControlPanel.Visibility = visibility;
+        if (BackdropCombo != null) BackdropCombo.Visibility = visibility;
+        if (MascotToggle != null) MascotToggle.Visibility = visibility;
+        if (VoiceToggle != null) VoiceToggle.Visibility = visibility;
+        if (MascotOpacityPanel != null) 
+        {
+            // Only show slider if Theme is NOT Classic AND Toggle is Checked
+            bool showSlider = visible && (MascotToggle.IsChecked == true);
+            MascotOpacityPanel.Visibility = showSlider ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 
@@ -362,8 +370,14 @@ public partial class RulesWindow : FluentWindow
         // 保存背景材质 (per-theme)
         SaveBackdropToTemp(_lastSelectedStyle, GetCurrentBackdropFromCombo());
         _config.GlassBackdrop = _tempGlassBackdrop;
+        _config.GlassBackdrop = _tempGlassBackdrop;
         _config.CleanBackdrop = _tempCleanBackdrop;
-
+        
+        // 保存 Mascot Toggle
+        _config.EnableMoeMascot = MascotToggle.IsChecked ?? false;
+        _config.EnableMoeVoice = VoiceToggle.IsChecked ?? false;
+        _config.MascotOpacity = MascotOpacitySlider.Value;
+        
         // ... (Rest of save)
         // 2. Mode A
         _config.ModeA.Name = ModeAName.Text;
@@ -650,6 +664,32 @@ public partial class RulesWindow : FluentWindow
         parts.Add(keyName);
         
         return string.Join(" + ", parts);
+    }
+
+    private void MascotOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (MascotOpacityValueText != null) UpdateMascotOpacityText();
+    }
+
+    private void UpdateMascotOpacityText()
+    {
+        if (MascotOpacityValueText != null)
+        {
+            MascotOpacityValueText.Text = $"{(int)(MascotOpacitySlider.Value * 100)}%";
+        }
+    }
+
+    private void MascotToggle_CheckedChanged(object sender, RoutedEventArgs e)
+    {
+        UpdateMascotOpacityPanelVisibility();
+    }
+
+    private void UpdateMascotOpacityPanelVisibility()
+    {
+        if (MascotOpacityPanel != null)
+        {
+            MascotOpacityPanel.Visibility = (MascotToggle.IsChecked == true) ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     private string GetKeyName(uint vkCode)

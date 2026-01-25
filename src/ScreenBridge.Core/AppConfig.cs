@@ -83,16 +83,31 @@ public class AppConfig
     }
 
     /// <summary>
-    /// MoeGlass 模式的背景不透明度 (默认 5%)
+    /// MoeGlass 模式的背景不透明度 (默认 60% 以确保在复杂立绘上清晰)
     /// </summary>
-    public double GlassOpacity { get; set; } = 0.05;
+    public double GlassOpacity { get; set; } = 0.60;
 
     /// <summary>
-    /// MoeClean 模式的背景不透明度 (默认 2%)
+    /// MoeClean 模式的背景不透明度 (默认 30%)
     /// </summary>
-    public double CleanOpacity { get; set; } = 0.02;
+    public double CleanOpacity { get; set; } = 0.30;
 
 
+
+    /// <summary>
+    /// 是否启用 Moe 模式下的看板娘立绘
+    /// </summary>
+    public bool EnableMoeMascot { get; set; } = false;
+
+    /// <summary>
+    /// 是否启用看板娘语音
+    /// </summary>
+    public bool EnableMoeVoice { get; set; } = true;
+
+    /// <summary>
+    /// 看板娘立绘不透明度 (默认 10%)
+    /// </summary>
+    public double MascotOpacity { get; set; } = 0.10;
 
     /// <summary>
     /// 窗口背景材质类型
@@ -204,12 +219,13 @@ public class AppConfig
         // 确保 TriggerInputs 初始化
         if (ModeB.TriggerInputs == null) ModeB.TriggerInputs = new List<int> { 17, 18 };
 
-        // 迁移旧的 Theme Opacity 默认值
-        // 如果被我不小心改成了高数值(>0.1)，改回默认的 0.05
-        if (GlassOpacity > 0.1) GlassOpacity = 0.05;
-        
-        // 如果是 0.0 (之前强制设为0)，改回 0.02
-        if (CleanOpacity < 0.01) CleanOpacity = 0.02;
+        // [Removed] 移除旧的 Opacity 强制降级逻辑，允许高透明度 (Contrast Mode)
+        // if (GlassOpacity > 0.1) GlassOpacity = 0.05;
+        // if (CleanOpacity < 0.01) CleanOpacity = 0.02;
+
+        // [Removed] 移除旧的 Opacity 强制降级逻辑，允许高透明度 (Contrast Mode)
+        // if (GlassOpacity > 0.1) GlassOpacity = 0.05;
+        // if (CleanOpacity < 0.01) CleanOpacity = 0.02;
 
         // 强制刷新 Backdrop 默认值 (如果它们是旧的反向配置: Glass=Mica, Clean=Acrylic)
         // 我们改为 Glass=Acrylic, Clean=Mica

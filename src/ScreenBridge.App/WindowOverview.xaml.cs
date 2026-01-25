@@ -27,11 +27,14 @@ public partial class WindowOverview : FluentWindow
         public ImageSource? Icon { get; init; }
     }
 
-    public WindowOverview(WindowService windowService, MonitorService monitorService)
+    private readonly bool _isModeB;
+
+    public WindowOverview(WindowService windowService, MonitorService monitorService, bool isModeB)
     {
         InitializeComponent();
         _windowService = windowService;
         _monitorService = monitorService;
+        _isModeB = isModeB;
 
         Loaded += WindowOverview_Loaded;
     }
@@ -54,6 +57,7 @@ public partial class WindowOverview : FluentWindow
             
             if (isMoe)
             {
+                // ... (Backdrop logic remains same) ...
                 // 根据当前Theme选择对应的背景材质
                 var backdrop = (config.Theme == AppConfig.UIStyle.MoeGlass) 
                     ? config.GlassBackdrop 
@@ -62,12 +66,64 @@ public partial class WindowOverview : FluentWindow
                 this.WindowBackdropType = backdrop == AppConfig.BackdropStyle.Acrylic 
                     ? WindowBackdropType.Acrylic 
                     : WindowBackdropType.Mica;
-                this.Background = null;
+                this.Background = Brushes.Transparent; // Must be transparent for Mica/Acrylic to show
+
+                // Dynamic Tint Logic (Sync with MainWindow)
+                var baseColor = config.EnableMoeMascot 
+                    ? Color.FromRgb(0, 0, 0) 
+                    : Color.FromRgb(255, 255, 255);
+                
+                // Use slightly higher opacity for Overview cards so they pop out
+                byte alpha = config.EnableMoeMascot ? (byte)100 : (byte)40; 
+                
+                var cardBrush = new SolidColorBrush(Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B));
+                var borderBrush = new SolidColorBrush(Color.FromArgb((byte)(alpha * 1.5), 255, 255, 255));
+
+                this.Resources["CardBackgroundBrush"] = cardBrush;
+                this.Resources["CardBorderBrush"] = borderBrush;
+                
+                // Mascot & Glow Logic
+                if (config.EnableMoeMascot)
+                {
+                    AmbientGlow.Visibility = Visibility.Visible;
+                    MascotImage.Visibility = Visibility.Visible;
+                    MascotImage.Opacity = config.MascotOpacity; // Sync opacity
+
+                    // Image
+                    string imagePath = _isModeB ? "Assets/Moe/standee_ps5.png" : "Assets/Moe/standee_windows.png";
+                    var uri = new Uri($"pack://application:,,,/ScreenBridge.App;component/{imagePath}");
+                    MascotImage.Source = new BitmapImage(uri);
+
+                    // Glow Color
+                    var glowColor = _isModeB 
+                        ? Color.FromRgb(255, 105, 180) 
+                        : Color.FromRgb(0, 191, 255);
+                    AmbientGlowInner.Color = glowColor;
+                }
+                else
+                {
+                    AmbientGlow.Visibility = Visibility.Collapsed;
+                    MascotImage.Visibility = Visibility.Collapsed;
+                }
             }
             else
             {
-                this.WindowBackdropType = WindowBackdropType.None;
-                this.ClearValue(Window.BackgroundProperty);
+                // Classic Mode
+                this.WindowBackdropType = WindowBackdropType.Mica; // Default to Mica for Classic too? Or None + System Color
+                // If None, we need a background color.
+                // Use default Mica for modern feel even in Classic, or strictly None.
+                // User said "Classic... background shouldn't change" -> implying it was changing to something weird.
+                // Let's set it to Mica but NO Mascot/Glow.
+                this.WindowBackdropType = WindowBackdropType.Mica;
+                this.Background = Brushes.Transparent; // Let Mica show through
+
+                // Hide Moe elements
+                AmbientGlow.Visibility = Visibility.Collapsed;
+                MascotImage.Visibility = Visibility.Collapsed;
+                
+                // Reset Card Resources to standard
+                this.Resources["CardBackgroundBrush"] = new SolidColorBrush(Color.FromArgb(20, 128, 128, 128)); // Default subtle gray
+                this.Resources["CardBorderBrush"] = new SolidColorBrush(Color.FromArgb(40, 0, 0, 0));
             }
         }
         catch (System.Exception ex)

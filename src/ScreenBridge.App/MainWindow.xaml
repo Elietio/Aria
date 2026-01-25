@@ -23,6 +23,25 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
+        <!-- Layer 0: Ambient Glow (Spans All Rows) -->
+        <!-- Layer 0: Ambient Glow (Radial Only - Cleaner) -->
+        <Border x:Name="AmbientGlow" Grid.RowSpan="2" Opacity="0.6">
+            <Border.Background>
+                <RadialGradientBrush GradientOrigin="0.5,0.5" Center="0.5,0.5" RadiusX="0.8" RadiusY="0.8">
+                    <GradientStop x:Name="AmbientGlowInner" Color="#00BFFF" Offset="0"/>
+                    <GradientStop Color="Transparent" Offset="1"/>
+                </RadialGradientBrush>
+            </Border.Background>
+        </Border>
+
+        <!-- Layer 1: Mascot (Spans All Rows, Bottom Left) -->
+        <!-- Note: Using JPG placeholders for now, opacity reduced to blend -->
+        <Image x:Name="MascotImage" Grid.RowSpan="2" 
+               HorizontalAlignment="Left" VerticalAlignment="Bottom" 
+               Height="600" Stretch="Uniform" Opacity="0.9" Margin="-100,0,0,-50"
+               RenderOptions.BitmapScalingMode="HighQuality"
+               IsHitTestVisible="False"/>
+
         <!-- 标题栏 -->
         <ui:TitleBar Grid.Row="0" Title="ScreenBridge" ShowMaximize="True" ShowMinimize="True"/>
 
@@ -55,7 +74,9 @@
                             CornerRadius="40" 
                             Background="#10FFFFFF"
                             Margin="0,0,24,0"
-                            VerticalAlignment="Top">
+                            VerticalAlignment="Top"
+                            MouseLeftButtonDown="ModeIcon_MouseLeftButtonDown"
+                            Cursor="Hand">
                         <Border.Effect>
                             <DropShadowEffect Color="Black" Opacity="0.15" BlurRadius="10" ShadowDepth="4" Direction="270"/>
                         </Border.Effect>
@@ -216,6 +237,31 @@
         <!-- 系统托盘图标 -->
 
         </ScrollViewer>
+
+        <!-- Layer 4: Dialogue Bubble (Floating above content - Aligned to Avatar) -->
+        <Border x:Name="DialogueBubble" Grid.RowSpan="2" 
+                HorizontalAlignment="Left" VerticalAlignment="Top"
+                Margin="130,110,0,0" 
+                Padding="16,12"
+                CornerRadius="16"
+                Background="#E6FFFFFF"
+                BorderBrush="#20000000" BorderThickness="1"
+                Visibility="Collapsed"
+                IsHitTestVisible="False">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" Opacity="0.1" BlurRadius="8" ShadowDepth="2"/>
+            </Border.Effect>
+            <Grid>
+                <!-- 小尾巴 (Triangle) - Simplified as a Polygon is tricky in Border, simply using bubble shape for now -->
+                <TextBlock x:Name="DialogueText" 
+                           Text="Hello World!" 
+                           FontSize="14" 
+                           Foreground="#333"
+                           TextWrapping="Wrap" 
+                           MaxWidth="220"/>
+            </Grid>
+        </Border>
+
         <tb:TaskbarIcon x:Name="TrayIcon"
                         ToolTipText="ScreenBridge"
                         TrayLeftMouseDoubleClick="TrayShow_Click">

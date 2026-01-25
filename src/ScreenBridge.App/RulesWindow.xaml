@@ -58,9 +58,30 @@
                         <TextBlock Text="界面风格:" Margin="0,0,0,5"/>
                         <ComboBox x:Name="ThemeCombo" Margin="0,0,0,10">
                             <ComboBoxItem Content="经典风格 (Classic)" Tag="Classic"/>
-                            <ComboBoxItem Content="标准萌系 (Moe Glass - 推荐)" Tag="MoeGlass"/>
+                            <ComboBoxItem Content="标准萌系 (Moe Glass)" Tag="MoeGlass"/>
                             <ComboBoxItem Content="极简萌系 (Moe Clean)" Tag="MoeClean"/>
                         </ComboBox>
+
+                        <CheckBox x:Name="MascotToggle" Content="启用看板娘立绘" Margin="0,0,0,10" Checked="MascotToggle_CheckedChanged" Unchecked="MascotToggle_CheckedChanged"/>
+                        
+                        <!-- 看板娘透明度滑块 -->
+                        <Grid x:Name="MascotOpacityPanel" Margin="20,0,0,10" Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="40"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="立绘透明度:" VerticalAlignment="Center" Margin="0,0,10,0" FontSize="12"/>
+                            <Slider x:Name="MascotOpacitySlider" Grid.Column="1" 
+                                    Minimum="0.01" Maximum="1.0" TickFrequency="0.01" 
+                                    IsMoveToPointEnabled="True" VerticalAlignment="Center" 
+                                    ValueChanged="MascotOpacitySlider_ValueChanged"/>
+                            <TextBlock x:Name="MascotOpacityValueText" Grid.Column="2" 
+                                       Text="75%" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                                       FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </Grid>
+
+                        <CheckBox x:Name="VoiceToggle" Content="启用看板娘语音" Margin="0,0,0,10"/>
                         
                         <TextBlock Text="背景材质:" Margin="0,0,0,5"/>
                         <ComboBox x:Name="BackdropCombo" Margin="0,0,0,10">

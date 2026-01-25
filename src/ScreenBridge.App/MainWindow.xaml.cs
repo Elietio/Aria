@@ -6,6 +6,9 @@ using System.Windows.Threading;
 using ScreenBridge.Core;
 using Wpf.Ui.Controls;
 
+using ScreenBridge.App;
+using System.IO;
+
 namespace ScreenBridge.App;
 
 /// <summary>
@@ -26,6 +29,8 @@ public partial class MainWindow : FluentWindow
     // 缓存显示器亮度值，避免刷新时闪烁 "--"
     // Key: DeviceName or FriendlyName, Value: Brightness %
     private Dictionary<string, int> _brightnessCache = new Dictionary<string, int>();
+
+    private System.Windows.Media.MediaPlayer? _voicePlayer;
 
     private const int WM_HOTKEY = 0x0312;
     private IntPtr _lastIconHandle = IntPtr.Zero;
@@ -60,6 +65,9 @@ public partial class MainWindow : FluentWindow
                 Interval = TimeSpan.FromSeconds(2)
             };
             _refreshTimer.Tick += async (s, e) => await RefreshStatusAsync();
+            
+            // 初始化音频播放器
+            _voicePlayer = new System.Windows.Media.MediaPlayer();
         }
         catch (Exception ex)
         {
@@ -375,9 +383,21 @@ public partial class MainWindow : FluentWindow
             stack.Children.Add(infoText);
 
             // 2. 技术参数 (Hz, Bit)
+            // DEVMODE.dmBitsPerPel usually matches RGB + Alpha/Padding (e.g. 32 = 8bit * 4).
+            // Users prefer "Bits Per Channel" (8-bit, 10-bit).
+            string bitDepthStr;
+            switch (monitor.BitDepth)
+            {
+                case 32: bitDepthStr = "8"; break;
+                case 24: bitDepthStr = "8"; break;
+                case 30: bitDepthStr = "10"; break;
+                case 48: bitDepthStr = "16"; break;
+                default: bitDepthStr = monitor.BitDepth.ToString(); break;
+            }
+
             var techText = new System.Windows.Controls.TextBlock 
             { 
-                Text = $"刷新率: {monitor.RefreshRate}Hz | 颜色深度: {monitor.BitDepth}-bit",
+                Text = $"刷新率: {monitor.RefreshRate}Hz | 颜色深度: {bitDepthStr}-bit",
                 Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"),
                 FontSize = 12,
                 Margin = new Thickness(26, 0, 0, 4)
@@ -483,7 +503,13 @@ public partial class MainWindow : FluentWindow
 
     private void ModeManager_ModeChanged(object? sender, AppMode mode)
     {
-        Dispatcher.Invoke(() => UpdateUIForMode(mode));
+        Dispatcher.Invoke(() => 
+        {
+            UpdateUIForMode(mode);
+            // 播放切换音效 (仅在模式实际变化时触发)
+            string switchVoice = mode == AppMode.PS5Mode ? "switch_to_ps5.mp3" : "switch_to_win.mp3";
+            PlayVoiceFile(switchVoice);
+        });
     }
 
     private void UpdateUIForMode(AppMode mode)
@@ -549,6 +575,7 @@ public partial class MainWindow : FluentWindow
         // 这里的 UpdateTrayIcon 是针对 Tray 的。
         // 我们修改 UpdateTrayIcon 内部逻辑去支持 Moe 风格。
         UpdateTrayIcon(mode);
+
     }
 
     private void UpdateTrayIcon(AppMode mode)
@@ -631,15 +658,189 @@ public partial class MainWindow : FluentWindow
 
     private void OpenOverviewButton_Click(object sender, RoutedEventArgs e)
     {
-        var overview = new WindowOverview(_windowService, _monitorService);
+        var overview = new WindowOverview(_windowService, _monitorService, _modeManager.CurrentMode == AppMode.PS5Mode);
         overview.Show();
     }
 
     private void ShowWindowOverview()
     {
         // TODO: 显示窗口概览界面
-        var overviewWindow = new WindowOverview(_windowService, _monitorService);
+        var overviewWindow = new WindowOverview(_windowService, _monitorService, _modeManager.CurrentMode == AppMode.PS5Mode);
         overviewWindow.Show();
+    }
+
+    private System.Threading.CancellationTokenSource? _dialogueCts;
+
+    private void MascotImage_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        // Standee interaction disabled
+    }
+
+    private void ModeIcon_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        // Only trigger if Mascot/Voice enabled (or just always?)
+        // User said "only click avatar".
+        if (_config.EnableMoeMascot)
+        {
+            ShowMascotDialogue();
+            // Also play voice? ShowMascotDialogue calls PlayVoiceFile.
+        }
+    }
+
+    private void ShowMascotDialogue()
+    {
+        // 简单的交互对话
+        string[] windowsDialogues = {
+            "工作中请勿打扰哦... (认真)",
+            "主人的效率真高呢！",
+            "记得适时休息一下眼睛~",
+            "ScreenBridge 正在监控一切 ( •̀ ω •́ )✧",
+            "有什么指令吗？",
+            "累了吗？要注意劳逸结合哦。",
+            "放心交给我，绝不出错。",
+            "看到你这么努力，我也更有干劲了！",
+            "喝杯水吧，补充水分很重要。",
+            "今天的日程安排得如何了？",
+            "记得随手保存哦！数据丢失很可怕的。",
+            "坐姿端正了吗？不要弯腰驼背哦。",
+            "虽然很想聊天，但工作优先！",
+            "加油加油！你是最棒的！",
+            "如果累了，闭目养神五分钟吧。"
+        };
+
+        string[] ps5Dialogues = {
+            "好耶！打游戏时间到！(≧∇≦)ﾉ",
+            "这关怎么过呀... 帮帮我~",
+            "摸鱼万岁！",
+            "手柄电量还够吗？",
+            "冲鸭！拿下这局！",
+            "别，别过来！救命呀！",
+            "哼哼，我可是很强的！",
+            "下一款游戏玩什么呢？",
+            "快看快看！这个连招帅不帅！",
+            "再玩最后一局... 就一局！",
+            "有点饿了... 有零食吗？",
+            "这就是“白金奖杯”的含金量！",
+            "玄学时刻！这次一定能出货！",
+            "呜呜... 被队友坑了...",
+            "熬夜打游戏虽然爽，但也要注意身体呀！"
+        };
+
+        bool isModeB = _modeManager.CurrentMode == AppMode.PS5Mode;
+        var list = isModeB ? ps5Dialogues : windowsDialogues;
+        int index = new Random().Next(list.Length);
+        var text = list[index];
+
+        // Show Bubble
+        ShowBubble(text);
+        
+        // Play AI Voice (e.g. win_0.mp3)
+        string prefix = isModeB ? "ps5" : "win";
+        PlayVoiceFile($"{prefix}_{index}.mp3");
+    }
+    
+    private void PlayVoiceFile(string filename)
+    {
+        if (_config.EnableMoeVoice && _voicePlayer != null)
+        {
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets/Moe/Voice", filename);
+                
+                if (File.Exists(path))
+                {
+                    _voicePlayer.Open(new Uri(path));
+                    _voicePlayer.Volume = 1.0; 
+                    _voicePlayer.Play();
+                }
+                else
+                {
+                    // 若文件不存在，静默失败 (或 Debug Log)
+                    System.Diagnostics.Debug.WriteLine($"Voice file not found: {path}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Voice Play Failed: {ex.Message}");
+            }
+        }
+    }
+
+    private async void ShowBubble(string text)
+    {
+        try
+        {
+            // Cancel previous hide timer
+            _dialogueCts?.Cancel();
+            _dialogueCts = new System.Threading.CancellationTokenSource();
+            var token = _dialogueCts.Token;
+
+            DialogueText.Text = text;
+            
+            // Adjust Layout based on Avatar Position (Top Left)
+            // Always use Top-Left since we disabled Standee interaction
+            DialogueBubble.VerticalAlignment = VerticalAlignment.Top;
+            DialogueBubble.Margin = new Thickness(130, 110, 0, 0); 
+
+            DialogueBubble.Visibility = Visibility.Visible;
+            
+            // Simple Animation (Fade In)
+            // DialogueBubble.Opacity = 0;
+            // ... (Storyboard code omitted for brevity, just visibility for now)
+
+            // Wait 3 seconds
+            await Task.Delay(3000, token);
+            
+            // Hide
+            DialogueBubble.Visibility = Visibility.Collapsed;
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignored (New dialogue took over)
+        }
+    }
+
+    private void UpdateMoeVisuals(bool isModeB)
+    {
+         if ((_config.Theme != AppConfig.UIStyle.MoeGlass && _config.Theme != AppConfig.UIStyle.MoeClean) 
+             || !_config.EnableMoeMascot)
+         {
+             AmbientGlow.Visibility = Visibility.Collapsed;
+             MascotImage.Visibility = Visibility.Collapsed;
+             return;
+         }
+
+         AmbientGlow.Visibility = Visibility.Visible;
+         MascotImage.Visibility = Visibility.Visible;
+
+         // 1. 切换立绘 (PNG Assets)
+         string imagePath = isModeB ? "Assets/Moe/standee_ps5.png" : "Assets/Moe/standee_windows.png";
+         try
+         {
+             var uri = new Uri($"pack://application:,,,/ScreenBridge.App;component/{imagePath}");
+             var bitmap = new System.Windows.Media.Imaging.BitmapImage(uri);
+             MascotImage.Source = bitmap;
+             // 半透明处理，避免遮挡文字 (User Configured)
+             MascotImage.Opacity = _config.MascotOpacity;
+         }
+         catch {}
+
+         // 2. Animate Ambient Glow Color (Radial Only)
+         if (AmbientGlowInner != null)
+         {
+             var targetColor = isModeB
+                 ? System.Windows.Media.Color.FromRgb(255, 105, 180) // HotPink
+                 : System.Windows.Media.Color.FromRgb(0, 191, 255);  // DeepSkyBlue
+             
+             var anim = new System.Windows.Media.Animation.ColorAnimation
+             {
+                 To = targetColor,
+                 Duration = TimeSpan.FromSeconds(0.6),
+                 EasingFunction = new System.Windows.Media.Animation.QuadraticEase()
+             };
+
+             AmbientGlowInner.BeginAnimation(System.Windows.Media.GradientStop.ColorProperty, anim);
+         }
     }
 
     private void AutoStartToggle_Checked(object sender, RoutedEventArgs e)
@@ -742,11 +943,18 @@ public partial class MainWindow : FluentWindow
                 ModeImage.Source = bitmap;
             }
             catch {}
+
+            // 更新立绘和氛围光
+            UpdateMoeVisuals(isModeB);
         }
         else
         {
             ModeIcon.Visibility = Visibility.Visible;
             ModeImage.Visibility = Visibility.Collapsed;
+            
+            // Fix: Explicitly hide Moe elements in Classic Mode
+            if (AmbientGlow != null) AmbientGlow.Visibility = Visibility.Collapsed;
+            if (MascotImage != null) MascotImage.Visibility = Visibility.Collapsed;
             
             if (!string.IsNullOrEmpty(profile.Icon) && Enum.TryParse<Wpf.Ui.Controls.SymbolRegular>(profile.Icon, out var symbol))
             {
@@ -847,11 +1055,21 @@ public partial class MainWindow : FluentWindow
         }
         else if (style == AppConfig.UIStyle.MoeGlass)
         {
-            // Refined Glass (精致玻璃)
-            byte alpha = (byte)(Math.Max(0.01, Math.Min(1.0, _config.GlassOpacity)) * 255);
+            // Dynamic Tint: 黑白切换 (不带彩色倾向，保持干净)
+            var baseColor = _config.EnableMoeMascot 
+                ? System.Windows.Media.Color.FromRgb(0, 0, 0)       // 纯黑
+                : System.Windows.Media.Color.FromRgb(255, 255, 255); // 纯白
+
+            // Refined Glass logic
+            double effectiveOpacity = _config.GlassOpacity;
+            // 仅在黑底(开启看板娘)时强制最低 20% 不透明度，避免文字在立绘上看不清
+            if (_config.EnableMoeMascot && effectiveOpacity < 0.2) effectiveOpacity = 0.2;
             
-            var glassBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(alpha, 255, 255, 255));
-            var borderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb((byte)(alpha * 3), 255, 255, 255)); // 边框稍微亮一点
+            byte alpha = (byte)(Math.Max(0.01, Math.Min(1.0, effectiveOpacity)) * 255);
+            
+            var glassBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B));
+            // 边框始终保持一定的亮色高光
+            var borderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb((byte)(alpha * 3), 255, 255, 255));
             
             foreach (var card in cards)
             {
@@ -874,10 +1092,14 @@ public partial class MainWindow : FluentWindow
         }
         else if (style == AppConfig.UIStyle.MoeClean)
         {
-            // Refined Clean (极简隐形 - Stealth)
+            // Refined Clean (极简/隐形)
+            var baseColor = _config.EnableMoeMascot 
+                ? System.Windows.Media.Color.FromRgb(0, 0, 0) 
+                : System.Windows.Media.Color.FromRgb(255, 255, 255);
+
             byte alpha = (byte)(Math.Max(0.01, Math.Min(1.0, _config.CleanOpacity)) * 255);
             
-            var cleanBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(alpha, 255, 255, 255));
+            var cleanBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B));
 
             foreach (var card in cards)
             {
@@ -891,6 +1113,8 @@ public partial class MainWindow : FluentWindow
             }
         }
     }
+
+
 
     #region Tray Event Handlers
 
