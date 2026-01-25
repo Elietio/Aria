@@ -19,6 +19,9 @@ public class MonitorInfo
     public int WorkTop { get; init; }
     public int WorkWidth { get; init; }
     public int WorkHeight { get; init; }
+    public int RefreshRate { get; set; }
+    public int BitDepth { get; set; }
+    public string DevicePath { get; init; } = string.Empty;
 }
 
 /// <summary>
@@ -83,7 +86,7 @@ public class MonitorService
 
         if (GetMonitorInfo(hMonitor, ref info))
         {
-            _monitors.Add(new MonitorInfo
+            var monitor = new MonitorInfo
             {
                 DeviceName = info.szDevice,
                 FriendlyName = GetFriendlyName(info.szDevice),
@@ -96,8 +99,20 @@ public class MonitorService
                 WorkLeft = info.rcWork.Left,
                 WorkTop = info.rcWork.Top,
                 WorkWidth = info.rcWork.Right - info.rcWork.Left,
-                WorkHeight = info.rcWork.Bottom - info.rcWork.Top
-            });
+                WorkHeight = info.rcWork.Bottom - info.rcWork.Top,
+                DevicePath = info.szDevice
+            };
+
+            // 获取详细信息 (Hz, Bit)
+            var devMode = new DEVMODE();
+            devMode.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+            if (EnumDisplaySettings(info.szDevice, ENUM_CURRENT_SETTINGS, ref devMode))
+            {
+                monitor.RefreshRate = devMode.dmDisplayFrequency;
+                monitor.BitDepth = devMode.dmBitsPerPel;
+            }
+
+            _monitors.Add(monitor);
         }
 
         return true;
@@ -374,6 +389,48 @@ public class MonitorService
 
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     static extern bool EnumDisplayDevices(string? lpDevice, uint iDevNum, ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumDisplaySettings(string deviceName, int modeNum, ref DEVMODE devMode);
+
+    const int ENUM_CURRENT_SETTINGS = -1;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct DEVMODE
+    {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string dmDeviceName;
+        public short dmSpecVersion;
+        public short dmDriverVersion;
+        public short dmSize;
+        public short dmDriverExtra;
+        public int dmFields;
+        public int dmPositionX;
+        public int dmPositionY;
+        public int dmDisplayOrientation;
+        public int dmDisplayFixedOutput;
+        public short dmColor;
+        public short dmDuplex;
+        public short dmYResolution;
+        public short dmTTOption;
+        public short dmCollate;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string dmFormName;
+        public short dmLogPixels;
+        public int dmBitsPerPel;
+        public int dmPelsWidth;
+        public int dmPelsHeight;
+        public int dmDisplayFlags;
+        public int dmDisplayFrequency;
+        public int dmICMMethod;
+        public int dmICMIntent;
+        public int dmMediaType;
+        public int dmDitherType;
+        public int dmReserved1;
+        public int dmReserved2;
+        public int dmPanningWidth;
+        public int dmPanningHeight;
+    }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
     public struct DISPLAY_DEVICE

@@ -71,6 +71,50 @@ public class AppConfig
     }
 
     /// <summary>
+    /// UI 界面风格
+    /// </summary>
+    public UIStyle Theme { get; set; } = UIStyle.Classic;
+
+    public enum UIStyle
+    {
+        Classic,
+        MoeGlass, // Option 1: Standard Glass (Border + Shadow)
+        MoeClean  // Option 2: Ultra Clean (Borderless)
+    }
+
+    /// <summary>
+    /// MoeGlass 模式的背景不透明度 (默认 5%)
+    /// </summary>
+    public double GlassOpacity { get; set; } = 0.05;
+
+    /// <summary>
+    /// MoeClean 模式的背景不透明度 (默认 2%)
+    /// </summary>
+    public double CleanOpacity { get; set; } = 0.02;
+
+
+
+    /// <summary>
+    /// 窗口背景材质类型
+    /// </summary>
+    public enum BackdropStyle
+    {
+        None,    // 不使用任何背景材质
+        Mica,    // 云母 (微妙的壁纸色调)
+        Acrylic  // 亚克力 (更明显的模糊透明)
+    }
+
+    /// <summary>
+    /// MoeGlass 模式的背景材质 (默认 Acrylic - 强模糊)
+    /// </summary>
+    public BackdropStyle GlassBackdrop { get; set; } = BackdropStyle.Acrylic;
+
+    /// <summary>
+    /// MoeClean 模式的背景材质 (默认 Mica - 轻微)
+    /// </summary>
+    public BackdropStyle CleanBackdrop { get; set; } = BackdropStyle.Mica;
+
+    /// <summary>
     /// 是否启用模式切换 Toast 通知
     /// </summary>
     public bool EnableToastNotifications { get; set; } = true;
@@ -158,8 +202,22 @@ public class AppConfig
         }
         
         // 确保 TriggerInputs 初始化
-        if (ModeA.TriggerInputs == null) ModeA.TriggerInputs = new List<int> { 15, 16, 27 };
         if (ModeB.TriggerInputs == null) ModeB.TriggerInputs = new List<int> { 17, 18 };
+
+        // 迁移旧的 Theme Opacity 默认值
+        // 如果被我不小心改成了高数值(>0.1)，改回默认的 0.05
+        if (GlassOpacity > 0.1) GlassOpacity = 0.05;
+        
+        // 如果是 0.0 (之前强制设为0)，改回 0.02
+        if (CleanOpacity < 0.01) CleanOpacity = 0.02;
+
+        // 强制刷新 Backdrop 默认值 (如果它们是旧的反向配置: Glass=Mica, Clean=Acrylic)
+        // 我们改为 Glass=Acrylic, Clean=Mica
+        if (GlassBackdrop == BackdropStyle.Mica && CleanBackdrop == BackdropStyle.Acrylic)
+        {
+            GlassBackdrop = BackdropStyle.Acrylic;
+            CleanBackdrop = BackdropStyle.Mica;
+        }
     }
 
     /// <summary>

@@ -9,7 +9,6 @@
         Title="窗口概览" 
         Height="600" Width="1000"
         WindowStartupLocation="CenterScreen"
-        WindowBackdropType="Acrylic"
         ExtendsContentIntoTitleBar="True"
         Topmost="True"
         KeyDown="Window_KeyDown">

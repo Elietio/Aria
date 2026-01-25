@@ -38,7 +38,42 @@ public partial class WindowOverview : FluentWindow
 
     private void WindowOverview_Loaded(object sender, RoutedEventArgs e)
     {
+        ApplyUIStyle();
         RefreshWindows();
+    }
+
+    /// <summary>
+    /// 应用当前UI风格的背景材质
+    /// </summary>
+    private void ApplyUIStyle()
+    {
+        try
+        {
+            var config = AppConfig.Load();
+            bool isMoe = config.Theme == AppConfig.UIStyle.MoeGlass || config.Theme == AppConfig.UIStyle.MoeClean;
+            
+            if (isMoe)
+            {
+                // 根据当前Theme选择对应的背景材质
+                var backdrop = (config.Theme == AppConfig.UIStyle.MoeGlass) 
+                    ? config.GlassBackdrop 
+                    : config.CleanBackdrop;
+                
+                this.WindowBackdropType = backdrop == AppConfig.BackdropStyle.Acrylic 
+                    ? WindowBackdropType.Acrylic 
+                    : WindowBackdropType.Mica;
+                this.Background = null;
+            }
+            else
+            {
+                this.WindowBackdropType = WindowBackdropType.None;
+                this.ClearValue(Window.BackgroundProperty);
+            }
+        }
+        catch (System.Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ApplyUIStyle failed: {ex.Message}");
+        }
     }
 
     private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

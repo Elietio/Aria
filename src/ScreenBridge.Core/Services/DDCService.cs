@@ -173,6 +173,17 @@ public class DDCService
         return GetVCPValue(monitor, VCP_INPUT_SELECT);
     }
 
+    public int? GetVCPInputCode(MonitorInfo monitor)
+    {
+        return GetCurrentInputSource(monitor);
+    }
+    
+    public string GetCommonInputName(int code)
+    {
+        var source = MapToInputSource(code);
+        return source.ToString();
+    }
+
     /// <summary>
     /// 读取指定显示器的 VCP 值 (通过遍历所有物理显示器匹配)
     /// </summary>

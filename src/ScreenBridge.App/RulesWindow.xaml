@@ -6,7 +6,8 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         mc:Ignorable="d"
         Title="规则配置" Height="600" Width="500"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ExtendsContentIntoTitleBar="True">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -48,6 +49,44 @@
                         <ui:Button Content="刷新读取" Appearance="Secondary" FontSize="12" 
                                    Margin="0,8,0,0" Padding="8,4" HorizontalAlignment="Left"
                                    Click="RefreshDDCReadout_Click"/>
+                    </StackPanel>
+                </ui:CardExpander>
+
+                <!-- 外观设置 -->
+                <ui:CardExpander Header="🎨 外观设置" IsExpanded="True" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="界面风格:" Margin="0,0,0,5"/>
+                        <ComboBox x:Name="ThemeCombo" Margin="0,0,0,10">
+                            <ComboBoxItem Content="经典风格 (Classic)" Tag="Classic"/>
+                            <ComboBoxItem Content="标准萌系 (Moe Glass - 推荐)" Tag="MoeGlass"/>
+                            <ComboBoxItem Content="极简萌系 (Moe Clean)" Tag="MoeClean"/>
+                        </ComboBox>
+                        
+                        <TextBlock Text="背景材质:" Margin="0,0,0,5"/>
+                        <ComboBox x:Name="BackdropCombo" Margin="0,0,0,10">
+                            <ComboBoxItem Content="云母 Mica (微妙)" Tag="Mica"/>
+                            <ComboBoxItem Content="亚克力 Acrylic (透明)" Tag="Acrylic"/>
+                        </ComboBox>
+                        
+                        <!-- 透明度滑块 -->
+                        <Grid x:Name="OpacityControlPanel" Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="40"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="背景不透明度:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <Slider x:Name="OpacitySlider" Grid.Column="1" 
+                                    Minimum="0.01" Maximum="1.0" TickFrequency="0.01" 
+                                    IsMoveToPointEnabled="True" VerticalAlignment="Center" 
+                                    ValueChanged="OpacitySlider_ValueChanged"/>
+                            <TextBlock x:Name="OpacityValueText" Grid.Column="2" 
+                                       Text="5%" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </Grid>
+                        
+                        <TextBlock Text="萌系风格包含动态角色头像、主题配色及透明托盘图标。" 
+                                   FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"/>
                     </StackPanel>
                 </ui:CardExpander>
 

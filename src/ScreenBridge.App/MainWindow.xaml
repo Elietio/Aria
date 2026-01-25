@@ -14,6 +14,7 @@
         WindowStartupLocation="CenterScreen"
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="Mica"
+        Background="Transparent"
         StateChanged="FluentWindow_StateChanged">
 
     <Grid>
@@ -35,9 +36,11 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
+                
+                <!-- BackgroundWatermark 已移除，使用 Mica 材质 -->
 
             <!-- 当前模式状态卡片 -->
-            <ui:Card Grid.Row="0" Margin="0,0,0,16">
+            <ui:Card x:Name="ModeStatusCard" Grid.Row="0" Margin="0,0,0,24" Padding="24" HorizontalAlignment="Stretch">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -45,40 +48,59 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
+                    <!-- 头像区域 -->
                     <Border Grid.Column="0" 
                             x:Name="ModeIconBorder"
-                            Width="72" Height="72" 
-                            CornerRadius="12" 
-                            Background="Transparent"
-                            Margin="0,0,16,0">
-                        <ui:SymbolIcon x:Name="ModeIcon" 
-                                       Symbol="Desktop24"
-                                       FontSize="48"
-                                       Foreground="Gray"/>
+                            Width="80" Height="80" 
+                            CornerRadius="40" 
+                            Background="#10FFFFFF"
+                            Margin="0,0,24,0"
+                            VerticalAlignment="Top">
+                        <Border.Effect>
+                            <DropShadowEffect Color="Black" Opacity="0.15" BlurRadius="10" ShadowDepth="4" Direction="270"/>
+                        </Border.Effect>
+                        <Grid>
+                            <ui:SymbolIcon x:Name="ModeIcon" 
+                                           Symbol="Desktop24"
+                                           FontSize="32"
+                                           Foreground="Gray"/>
+                            <Image x:Name="ModeImage" Visibility="Collapsed" Stretch="UniformToFill"
+                                   RenderOptions.BitmapScalingMode="HighQuality">
+                                <Image.Clip>
+                                    <EllipseGeometry Center="40,40" RadiusX="40" RadiusY="40"/>
+                                </Image.Clip>
+                            </Image>
+                        </Grid>
                     </Border>
 
+                    <!-- 文本区域 -->
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock x:Name="ModeTitle" Text="Windows 模式" FontSize="20" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="ModeTitle" Text="Windows 模式" FontSize="26" FontWeight="SemiBold" Margin="0,0,0,4"/>
                         <TextBlock x:Name="ModeDescription" Text="主显示器用于 Windows，音频输出到主显示器" 
                                    Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" 
-                                   Margin="0,4,0,0"/>
-                        <TextBlock x:Name="WindowRuleStatus" Text="窗口规则: 默认" 
-                                   FontSize="12"
-                                   Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}" 
-                                   Margin="0,2,0,0"/>
+                                   FontSize="14"
+                                   Margin="0,0,0,8"/>
+                        
+                        <!-- 状态标签 -->
+                        <Border HorizontalAlignment="Left" Background="#20FFFFFF" CornerRadius="4" Padding="8,4">
+                            <TextBlock x:Name="WindowRuleStatus" Text="窗口规则: 默认" 
+                                       FontSize="12"
+                                       Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"/>
+                        </Border>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <!-- 按钮区域 -->
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="16,0,0,0">
                         <ui:Button x:Name="SwitchModeButton"
-                                   Content="切换到 PS5 模式" 
+                                   Content="切换模式" 
                                    Appearance="Primary"
                                    Click="SwitchModeButton_Click"
-                                   Width="160" Margin="0,0,0,8"/>
+                                   Width="160" Height="40" FontSize="14" Margin="0,0,0,12"/>
 
                         <ui:Button Content="打开窗口概览" 
                                    Appearance="Secondary"
                                    Click="OpenOverviewButton_Click"
-                                   Width="160">
+                                   Width="160" Height="40">
                             <ui:Button.Icon>
                                 <ui:SymbolIcon Symbol="WindowApps24"/>
                             </ui:Button.Icon>
@@ -88,79 +110,84 @@
             </ui:Card>
 
             <!-- 音频设备设置 -->
-            <ui:Card Grid.Row="1" Margin="0,0,0,16">
-                <Expander Header="🔊 音频设备设置" IsExpanded="True">
-                    <StackPanel Margin="0,16,0,0">
-                        <!-- 当前活动的音频设备 -->
-                        <Grid Margin="0,0,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="150"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="当前活动设备:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                            <TextBlock Grid.Column="1" x:Name="CurrentAudioDeviceText" 
-                                       Text="正在获取..." VerticalAlignment="Center"
-                                       FontWeight="Bold"
-                                       Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"/>
-                        </Grid>
-
-                        <!-- 音量滑块 -->
-                        <Grid Margin="0,0,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="150"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="50"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="音量:" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" x:Name="VolumeSlider" 
-                                    Minimum="0" Maximum="100" 
-                                    IsMoveToPointEnabled="True"
-                                    TickFrequency="1"
-                                    VerticalAlignment="Center"
-                                    ValueChanged="VolumeSlider_ValueChanged"/>
-                            <TextBlock Grid.Column="2" x:Name="VolumeText" 
-                                       Text="0%" Margin="8,0,0,0" 
-                                       VerticalAlignment="Center"/>
-                        </Grid>
+            <ui:Card x:Name="AudioSettingsCard" Grid.Row="1" Margin="0,0,0,20" Padding="24">
+                <StackPanel>
+                    <TextBlock Text="音频设置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                    
+                    <!-- 当前活动设备 (可切换) -->
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon Symbol="Speaker224" FontSize="20" Margin="0,0,12,0" VerticalAlignment="Center"/>
                         
+                        <ComboBox Grid.Column="1" x:Name="AudioDeviceComboBox" 
+                                     DisplayMemberPath="Name" SelectedValuePath="Id"
+                                     SelectionChanged="AudioDeviceComboBox_SelectionChanged"
+                                     HorizontalAlignment="Stretch"/>
+                    </Grid>
 
-                    </StackPanel>
-                </Expander>
+                    <!-- 音量滑块 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="40"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon Symbol="Speaker224" FontSize="20" Margin="0,0,12,0" VerticalAlignment="Center" Visibility="Hidden"/> <!-- 占位 -->
+                        
+                        <Slider Grid.Column="1" x:Name="VolumeSlider" 
+                                Minimum="0" Maximum="100" 
+                                IsMoveToPointEnabled="True"
+                                TickFrequency="1"
+                                VerticalAlignment="Center"
+                                ValueChanged="VolumeSlider_ValueChanged"/>
+                        
+                        <TextBlock Grid.Column="2" x:Name="VolumeText" 
+                                   Text="0%" 
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
+                    </Grid>
+                </StackPanel>
             </ui:Card>
 
             <!-- 热键设置 -->
-            <ui:Card Grid.Row="2" Margin="0,0,0,16">
-                <Expander Header="⌨️ 快捷键设置">
-                    <StackPanel Margin="0,16,0,0">
-                        <Grid Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="150"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="切换模式:" VerticalAlignment="Center"/>
-                            <ui:TextBox Grid.Column="1" x:Name="SwitchHotkeyTextBox" 
-                                        Text="Ctrl + Alt + S" IsReadOnly="True" Margin="8,0,0,0"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="150"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="窗口概览:" VerticalAlignment="Center"/>
-                            <ui:TextBox Grid.Column="1" x:Name="OverviewHotkeyTextBox" 
-                                        Text="Ctrl + Alt + W" IsReadOnly="True" Margin="8,0,0,0"/>
-                        </Grid>
-                    </StackPanel>
-                </Expander>
+            <ui:Card x:Name="HotkeySettingsCard" Grid.Row="2" Margin="0,0,0,20" Padding="24">
+                <StackPanel>
+                    <TextBlock Text="快捷键" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                    
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="切换模式" VerticalAlignment="Center" Width="80" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
+                        <ui:TextBox Grid.Column="1" x:Name="SwitchHotkeyTextBox" 
+                                    Text="Ctrl + Alt + S" IsReadOnly="True"/>
+                    </Grid>
+                    
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="窗口概览" VerticalAlignment="Center" Width="80" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"/>
+                        <ui:TextBox Grid.Column="1" x:Name="OverviewHotkeyTextBox" 
+                                    Text="Ctrl + Alt + W" IsReadOnly="True"/>
+                    </Grid>
+                </StackPanel>
             </ui:Card>
 
             <!-- 显示器信息 -->
-            <ui:Card Grid.Row="3" Margin="0,0,0,16">
-                <Expander Header="🖥️ 显示器信息">
-                    <StackPanel x:Name="MonitorInfoPanel" Margin="0,16,0,0">
+            <ui:Card x:Name="MonitorInfoCard" Grid.Row="3" Margin="0,0,0,20" Padding="24">
+                <StackPanel>
+                    <TextBlock Text="显示器信息" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                    <StackPanel x:Name="MonitorInfoPanel">
                         <!-- 动态生成 -->
                     </StackPanel>
-                </Expander>
+                </StackPanel>
             </ui:Card>
 
             <!-- 底部设置与规则按钮 -->

@@ -143,6 +143,10 @@ ScreenBridge/
 
 欢迎提交 Issue 和 Pull Request！
 
+## 🐛 已知问题 (Known Issues)
+
+- **PS5 模式主题色**: 在切换到 PS5 模式时，部分 UI 控件（如按钮、滑块）可能仍保持默认的蓝色强调色，未正确切换为粉色。目前仅复选框 (CheckBox) 能正确响应颜色切换。此问题受限于 UI 库的主题锁定机制，将在未来版本中修复。
+
 ## 📄 许可证
 
 MIT License - 详见 [LICENSE](LICENSE) 文件

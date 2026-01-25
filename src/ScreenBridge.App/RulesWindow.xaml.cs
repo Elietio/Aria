@@ -35,61 +35,212 @@ public partial class RulesWindow : FluentWindow
         DDCMonitorCombo.SelectionChanged += (s, e) => RefreshDDCReadout();
     }
 
+    // 临时的透明度变量
+    private double _tempGlassOpacity;
+    private double _tempCleanOpacity;
+    // 临时的背景材质变量
+    private AppConfig.BackdropStyle _tempGlassBackdrop;
+    private AppConfig.BackdropStyle _tempCleanBackdrop;
+    // 上一次选中的 Style，用于保存 slider 值
+    private AppConfig.UIStyle _lastSelectedStyle;
+    // 防止加载时触发事件导致数据覆盖
+    private bool _isLoaded = false;
+
     private async void RulesWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        _isLoaded = false;
+
+        // 0. 应用当前UI风格
+        ApplyUIStyle();
+
         // 1. 加载显示器列表 (DDC)
         var monitors = _monitorService.GetAllMonitors();
         DDCMonitorCombo.ItemsSource = monitors;
-        
-        // 选中当前 DDC Monitor
+         // ... (Selection logic)
         var currentDdcMonitor = monitors.FirstOrDefault(m => 
             m.DeviceName == _config.DDCMonitorId || 
             m.FriendlyName == _config.DDCMonitorId);
         
-        if (currentDdcMonitor != null)
-        {
-            DDCMonitorCombo.SelectedItem = currentDdcMonitor;
-        }
-        else
-        {
-            DDCMonitorCombo.SelectedIndex = 0; // 默认第一个
-        }
+        if (currentDdcMonitor != null) DDCMonitorCombo.SelectedItem = currentDdcMonitor;
+        else DDCMonitorCombo.SelectedIndex = 0;
 
         // 2. 加载设置逻辑
         SelectComboBoxByTag(DdcLossActionCombo, _config.DdcLossAction.ToString());
+        
+        // 初始化临时变量
+        _tempGlassOpacity = _config.GlassOpacity;
+        _tempCleanOpacity = _config.CleanOpacity;
+        _tempGlassBackdrop = _config.GlassBackdrop;
+        _tempCleanBackdrop = _config.CleanBackdrop;
+        _lastSelectedStyle = _config.Theme;
+
+        // 绑定事件 (确保在设置 ItemSource 之前或之后适当时机)
+        ThemeCombo.SelectionChanged += ThemeCombo_SelectionChanged;
+        
+        // 触发一次加载 current opacity
+        SelectComboBoxByTag(ThemeCombo, _config.Theme.ToString());
+        
+        // 手动初始化 Slider，不触发事件逻辑
+        UpdateSliderForStyle(_config.Theme);
+        
+        // 初始化背景材质选择
+        UpdateBackdropComboForStyle(_config.Theme);
+
+        // 初始化可见性 (Classic 隐藏透明度和背景材质控件)
+        bool showControls = _config.Theme != AppConfig.UIStyle.Classic;
+        if (OpacityControlPanel != null)
+        {
+            OpacityControlPanel.Visibility = showControls ? Visibility.Visible : Visibility.Collapsed;
+        }
+        if (BackdropCombo != null)
+        {
+            BackdropCombo.Visibility = showControls ? Visibility.Visible : Visibility.Collapsed;
+        }
 
         // 3. 加载音频设备
         var audioDevices = await _audioService.GetPlaybackDevicesAsync();
+        // ... (rest as before)
         var audioList = audioDevices.ToList();
         ModeAAudioCombo.ItemsSource = audioList;
         ModeBAudioCombo.ItemsSource = audioList;
 
+        // ... (rest of loading)
         // 3. 填充 Mode A 数据
         ModeAName.Text = _config.ModeA.Name;
-        // 选中音频
         var modeAAudio = audioList.FirstOrDefault(a => a.Name == _config.ModeA.TargetAudioDeviceName);
         if (modeAAudio != null) ModeAAudioCombo.SelectedItem = modeAAudio;
-        // 窗口目标
-        // 窗口目标
         PopulateAppWindowCombo(ModeAWindowCombo, monitors, _config.ModeA.TargetWindowMonitor);
         PopulateAppWindowCombo(ModeAAppWindowCombo, monitors, _config.ModeA.AppWindowTargetMonitor);
-        // 触发条件
         CreateTriggerCheckboxes(ModeATriggersPanel, _config.ModeA.TriggerInputs);
 
-        // 4. 填充 Mode B 数据
+        // 4. Mode B
         ModeBName.Text = _config.ModeB.Name;
-        // 选中音频
         var modeBAudio = audioList.FirstOrDefault(a => a.Name == _config.ModeB.TargetAudioDeviceName);
         if (modeBAudio != null) ModeBAudioCombo.SelectedItem = modeBAudio;
-        // 窗口目标
-        // 窗口目标
         PopulateAppWindowCombo(ModeBWindowCombo, monitors, _config.ModeB.TargetWindowMonitor);
         PopulateAppWindowCombo(ModeBAppWindowCombo, monitors, _config.ModeB.AppWindowTargetMonitor);
-        // 触发条件
         CreateTriggerCheckboxes(ModeBTriggersPanel, _config.ModeB.TriggerInputs);
 
         // 5. 加载热键和通知设置
         LoadHotkeySettings();
+
+        _isLoaded = true;
+    }
+
+    private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_isLoaded) return;
+
+        if (ThemeCombo.SelectedItem is ComboBoxItem item && item.Tag != null)
+        {
+            if (Enum.TryParse<AppConfig.UIStyle>(item.Tag.ToString(), out var newStyle))
+            {
+                // 1. 保存旧值 (从 Slider 和 BackdropCombo 当前值)
+                SaveOpacityToTemp(_lastSelectedStyle, OpacitySlider.Value);
+                SaveBackdropToTemp(_lastSelectedStyle, GetCurrentBackdropFromCombo());
+                
+                // 2. 更新指针
+                _lastSelectedStyle = newStyle;
+                
+                // 3. 更新 Slider 和 BackdropCombo 到新值
+                UpdateSliderForStyle(newStyle);
+                UpdateBackdropComboForStyle(newStyle);
+
+                // 4. 更新控件状态 (Classic 隐藏 Slider 和 Backdrop)
+                bool showControls = newStyle != AppConfig.UIStyle.Classic;
+                if (OpacityControlPanel != null)
+                {
+                    OpacityControlPanel.Visibility = showControls ? Visibility.Visible : Visibility.Collapsed;
+                }
+                if (BackdropCombo != null)
+                {
+                    BackdropCombo.Visibility = showControls ? Visibility.Visible : Visibility.Collapsed;
+                }
+            }
+        }
+    }
+
+    private void SaveOpacityToTemp(AppConfig.UIStyle style, double value)
+    {
+        if (style == AppConfig.UIStyle.MoeGlass) _tempGlassOpacity = value;
+        else if (style == AppConfig.UIStyle.MoeClean) _tempCleanOpacity = value;
+    }
+
+    /// <summary>
+    /// 应用当前UI风格的背景材质
+    /// </summary>
+    private void ApplyUIStyle()
+    {
+        try
+        {
+            bool isMoe = _config.Theme == AppConfig.UIStyle.MoeGlass || _config.Theme == AppConfig.UIStyle.MoeClean;
+            
+            if (isMoe)
+            {
+                // 根据当前Theme选择对应的背景材质
+                var backdrop = (_config.Theme == AppConfig.UIStyle.MoeGlass) 
+                    ? _config.GlassBackdrop 
+                    : _config.CleanBackdrop;
+                
+                this.WindowBackdropType = backdrop == AppConfig.BackdropStyle.Acrylic 
+                    ? Wpf.Ui.Controls.WindowBackdropType.Acrylic 
+                    : Wpf.Ui.Controls.WindowBackdropType.Mica;
+                this.Background = null;
+            }
+            else
+            {
+                this.WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
+                this.ClearValue(Window.BackgroundProperty);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ApplyUIStyle failed: {ex.Message}");
+        }
+    }
+
+    private void UpdateSliderForStyle(AppConfig.UIStyle style)
+    {
+        if (style == AppConfig.UIStyle.MoeGlass) OpacitySlider.Value = _tempGlassOpacity;
+        else if (style == AppConfig.UIStyle.MoeClean) OpacitySlider.Value = _tempCleanOpacity;
+        else OpacitySlider.Value = 1.0; // Classic fallback
+        UpdateOpacityText();
+    }
+
+    private void UpdateBackdropComboForStyle(AppConfig.UIStyle style)
+    {
+        var backdrop = style switch
+        {
+            AppConfig.UIStyle.MoeGlass => _tempGlassBackdrop,
+            AppConfig.UIStyle.MoeClean => _tempCleanBackdrop,
+            _ => AppConfig.BackdropStyle.Mica
+        };
+        SelectComboBoxByTag(BackdropCombo, backdrop.ToString());
+    }
+
+    private void SaveBackdropToTemp(AppConfig.UIStyle style, AppConfig.BackdropStyle backdrop)
+    {
+        switch (style)
+        {
+            case AppConfig.UIStyle.MoeGlass:
+                _tempGlassBackdrop = backdrop;
+                break;
+            case AppConfig.UIStyle.MoeClean:
+                _tempCleanBackdrop = backdrop;
+                break;
+        }
+    }
+
+    private AppConfig.BackdropStyle GetCurrentBackdropFromCombo()
+    {
+        if (BackdropCombo.SelectedItem is ComboBoxItem item && item.Tag != null)
+        {
+            if (Enum.TryParse<AppConfig.BackdropStyle>(item.Tag.ToString(), out var backdrop))
+            {
+                return backdrop;
+            }
+        }
+        return AppConfig.BackdropStyle.Mica;
     }
 
     private void CreateTriggerCheckboxes(StackPanel panel, List<int> selectedCodes)
@@ -161,29 +312,59 @@ public partial class RulesWindow : FluentWindow
         SelectComboBoxByTag(combo, currentSelection);
     }
 
+    private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (!_isLoaded) return;
+
+        // 实时更新当前临时变量
+        SaveOpacityToTemp(_lastSelectedStyle, e.NewValue);
+        UpdateOpacityText();
+    }
+
+    private void UpdateOpacityText()
+    {
+        if (OpacityValueText != null)
+        {
+            OpacityValueText.Text = $"{(int)(OpacitySlider.Value * 100)}%";
+        }
+    }
+    
+    // ...
+
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        // 1. DDC Monitor
+        // ... (DDC save)
         if (DDCMonitorCombo.SelectedItem is MonitorInfo monitor)
         {
-            // 对于 Generic PnP Monitor，使用 DeviceName 更稳妥？但 DeviceName 比如 \\.\DISPLAY1 会变。
-            // FriendlyName "LG UltraFine" 比较稳定。
-            // 使用 FriendlyName 如果可用，否则 DeviceName.
             _config.DDCMonitorId = !string.IsNullOrEmpty(monitor.FriendlyName) && monitor.FriendlyName != "Generic PnP Monitor"
                 ? monitor.FriendlyName 
                 : monitor.DeviceName;
         }
 
-
-        
         if (DdcLossActionCombo.SelectedItem is ComboBoxItem lossItem && lossItem.Tag != null)
         {
             if (Enum.TryParse<AppConfig.DDCLossAction>(lossItem.Tag.ToString(), out var action))
-            {
                 _config.DdcLossAction = action;
-            }
         }
 
+        if (ThemeCombo.SelectedItem is ComboBoxItem themeItem && themeItem.Tag != null)
+        {
+            if (Enum.TryParse<AppConfig.UIStyle>(themeItem.Tag.ToString(), out var style))
+            {
+                _config.Theme = style;
+            }
+        }
+        
+        // 保存Opacity
+        _config.GlassOpacity = _tempGlassOpacity;
+        _config.CleanOpacity = _tempCleanOpacity;
+
+        // 保存背景材质 (per-theme)
+        SaveBackdropToTemp(_lastSelectedStyle, GetCurrentBackdropFromCombo());
+        _config.GlassBackdrop = _tempGlassBackdrop;
+        _config.CleanBackdrop = _tempCleanBackdrop;
+
+        // ... (Rest of save)
         // 2. Mode A
         _config.ModeA.Name = ModeAName.Text;
         if (ModeAAudioCombo.SelectedItem is AudioDeviceInfo audioA)
@@ -272,7 +453,7 @@ public partial class RulesWindow : FluentWindow
         DialogResult = false;
         Close();
     }
-
+    
     #region Hotkey Settings
 
     // 临时存储正在编辑的热键
