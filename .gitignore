@@ -58,3 +58,14 @@ packages/
 *.trx
 *.coverage
 *.coveragexml
+
+dist/
+
+# Agent/Skills
+.agent/
+.agents/
+
+# Design docs (keep locally only)
+GEMINI.md
+ROADMAP.md
+docs/design/

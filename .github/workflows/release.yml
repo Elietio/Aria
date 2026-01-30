@@ -25,7 +25,7 @@ jobs:
 
     - name: Publish Framework-Dependent (小体积，需要 .NET 8 Runtime)
       run: |
-        dotnet publish src/ScreenBridge.App/ScreenBridge.App.csproj `
+        dotnet publish src/Aria.App/Aria.App.csproj `
           -c Release `
           --self-contained false `
           -p:PublishSingleFile=false `
@@ -35,7 +35,7 @@ jobs:
 
     - name: Publish Self-Contained (大体积，无需安装 .NET)
       run: |
-        dotnet publish src/ScreenBridge.App/ScreenBridge.App.csproj `
+        dotnet publish src/Aria.App/Aria.App.csproj `
           -c Release `
           -r win-x64 `
           --self-contained true `
@@ -48,25 +48,25 @@ jobs:
 
     - name: Create Release Archives
       run: |
-        Compress-Archive -Path ./publish-lite/* -DestinationPath ./ScreenBridge-${{ github.ref_name }}-lite.zip
-        Compress-Archive -Path ./publish-full/ScreenBridge.App.exe -DestinationPath ./ScreenBridge-${{ github.ref_name }}-full.zip
+        Compress-Archive -Path ./publish-lite/* -DestinationPath ./Aria-${{ github.ref_name }}-lite.zip
+        Compress-Archive -Path ./publish-full/Aria.App.exe -DestinationPath ./Aria-${{ github.ref_name }}-full.zip
         Write-Host "Release archives:"
         Get-ChildItem ./*.zip | Select-Object Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,2)}}
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        name: ScreenBridge ${{ github.ref_name }}
+        name: Aria ${{ github.ref_name }}
         body: |
           ## 下载说明
           
           | 版本 | 说明 |
           |------|------|
-          | **ScreenBridge-${{ github.ref_name }}-lite.zip** | 精简版 (~10MB)，需要安装 [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) |
-          | **ScreenBridge-${{ github.ref_name }}-full.zip** | 完整版 (~70MB)，包含运行时，开箱即用 |
+          | **Aria-${{ github.ref_name }}-lite.zip** | 精简版 (~10MB)，需要安装 [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) |
+          | **Aria-${{ github.ref_name }}-full.zip** | 完整版 (~70MB)，包含运行时，开箱即用 |
         files: |
-          ./ScreenBridge-${{ github.ref_name }}-lite.zip
-          ./ScreenBridge-${{ github.ref_name }}-full.zip
+          ./Aria-${{ github.ref_name }}-lite.zip
+          ./Aria-${{ github.ref_name }}-full.zip
         draft: false
         prerelease: false
       env:

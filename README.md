@@ -1,4 +1,4 @@
-# ScreenBridge 🖥️🎮
+# Aria 🖥️🎮
 
 > 智能显示器模式切换工具 - 在 PC 和 PS5 之间无缝切换你的显示器设置
 
@@ -12,7 +12,7 @@
   <img src="docs/images/mode_ps5.svg" width="64" alt="PS5 Mode" />
 </div>
 
-ScreenBridge 是一款 Windows 桌面应用程序，专为同时使用 PC 和游戏主机（如 PS5）共享同一显示器的用户设计。它能自动检测显示器输入源变化，并智能切换音频设备、管理窗口位置，让你的多设备工作流程更加顺畅。
+Aria 是一款 Windows 桌面应用程序，专为同时使用 PC 和游戏主机（如 PS5）共享同一显示器的用户设计。它能自动检测显示器输入源变化，并智能切换音频设备、管理窗口位置，让你的多设备工作流程更加顺畅。
 
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet)
 ![WPF](https://img.shields.io/badge/WPF-UI-0078D4?style=flat-square&logo=windows)
@@ -85,20 +85,20 @@ ScreenBridge 是一款 Windows 桌面应用程序，专为同时使用 PC 和游
 ### 安装
 
 1. 从 [Releases](../../releases) 下载最新版本
-2. 解压并运行 `ScreenBridge.App.exe`
+2. 解压并运行 `Aria.App.exe`
 
 ### 从源码构建
 
 ```bash
 # 克隆仓库
-git clone https://github.com/elietio/ScreenBridge.git
-cd ScreenBridge
+git clone https://github.com/elietio/Aria.git
+cd Aria
 
 # 构建项目
 dotnet build
 
 # 运行应用
-dotnet run --project src/ScreenBridge.App/ScreenBridge.App.csproj
+dotnet run --project src/Aria.App/Aria.App.csproj
 ```
 
 ## ⚙️ 配置
@@ -114,14 +114,14 @@ dotnet run --project src/ScreenBridge.App/ScreenBridge.App.csproj
 - **触发条件**：选择触发该模式的输入源（支持动态读取当前显示器 VCP 值）
 - **音频设备**：模式激活时切换到指定的音频输出
 - **窗口规则**：新窗口自动移动到指定显示器（支持精确选择型号）
-- **程序跟随**：ScreenBridge 主窗口跟随模式移动到指定显示器
+- **程序跟随**：Aria 主窗口跟随模式移动到指定显示器
 
 ## 🏗️ 项目结构
 
 ```
-ScreenBridge/
+Aria/
 ├── src/
-│   ├── ScreenBridge.Core/          # 核心业务逻辑
+│   ├── Aria.Core/          # 核心业务逻辑
 │   │   ├── Services/
 │   │   │   ├── AudioService.cs     # 音频设备管理
 │   │   │   ├── DDCService.cs       # DDC/CI 通信
@@ -132,7 +132,7 @@ ScreenBridge/
 │   │   ├── ModeManager.cs          # 模式管理器
 │   │   └── ModeProfile.cs          # 模式配置模型
 │   │
-│   └── ScreenBridge.App/           # WPF 应用程序
+│   └── Aria.App/           # WPF 应用程序
 │       ├── MainWindow.xaml(.cs)    # 主窗口
 │       ├── RulesWindow.xaml(.cs)   # 规则配置窗口
 │       └── WindowOverview.xaml(.cs) # 窗口概览
