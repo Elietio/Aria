@@ -23,6 +23,9 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
+    - name: Run Tests
+      run: dotnet test --no-restore --verbosity normal
+
     - name: Publish Framework-Dependent (小体积，需要 .NET 8 Runtime)
       run: |
         dotnet publish src/Aria.App/Aria.App.csproj `
