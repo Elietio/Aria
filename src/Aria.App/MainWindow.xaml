@@ -7,7 +7,7 @@
         xmlns:tb="http://www.hardcodet.net/taskbar"
         xmlns:local="clr-namespace:Aria.App"
         mc:Ignorable="d"
-        Title="ScreenBridge" 
+        Title="Aria" 
         Height="Auto" Width="800"
         MinHeight="500" MinWidth="700"
         SizeToContent="Height" ResizeMode="CanResize"
@@ -43,7 +43,7 @@
                IsHitTestVisible="False"/>
 
         <!-- 标题栏 -->
-        <ui:TitleBar Grid.Row="0" Title="ScreenBridge" ShowMaximize="True" ShowMinimize="True"/>
+        <ui:TitleBar Grid.Row="0" Title="Aria" ShowMaximize="True" ShowMinimize="True"/>
 
         <!-- 主内容区域 -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -263,7 +263,7 @@
         </Border>
 
         <tb:TaskbarIcon x:Name="TrayIcon"
-                        ToolTipText="ScreenBridge"
+                        ToolTipText="Aria"
                         TrayLeftMouseDoubleClick="TrayShow_Click">
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu>

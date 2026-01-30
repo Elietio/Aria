@@ -30,7 +30,7 @@ public class ModeProfile
     /// </summary>
     public bool EnableWindowAutoMove => TargetWindowMonitor != "None";
     /// <summary>
-    /// ScreenBridge 主程序窗口的目标位置 (Main, Primary, Side, None)
+    /// Aria 主程序窗口的目标位置 (Main, Primary, Side, None)
     /// </summary>
     public string AppWindowTargetMonitor { get; set; } = "None";
 }

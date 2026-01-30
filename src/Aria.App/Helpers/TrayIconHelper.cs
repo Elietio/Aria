@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using H.NotifyIcon;
 using Aria.Core;
 
-namespace Aria.App.Services;
+namespace Aria.App.Helpers;
 
 /// <summary>
 /// 托盘图标助手 - 管理托盘图标更新

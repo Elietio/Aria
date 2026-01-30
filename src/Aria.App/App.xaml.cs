@@ -17,7 +17,7 @@ public partial class App : System.Windows.Application
         {
             System.Windows.MessageBox.Show(
                 $"程序发生未捕获异常 (UI):\n{args.Exception.Message}\n\n堆栈:\n{args.Exception.StackTrace}", 
-                "ScreenBridge 错误", 
+                "Aria 错误", 
                 System.Windows.MessageBoxButton.OK, 
                 System.Windows.MessageBoxImage.Error);
             args.Handled = true;
@@ -30,7 +30,7 @@ public partial class App : System.Windows.Application
             var ex = args.ExceptionObject as Exception;
             System.Windows.MessageBox.Show(
                 $"程序发生严重错误 (Domain):\n{ex?.Message ?? "Unknown Error"}\n\n堆栈:\n{ex?.StackTrace}", 
-                "ScreenBridge 严重错误", 
+                "Aria 严重错误", 
                 System.Windows.MessageBoxButton.OK, 
                 System.Windows.MessageBoxImage.Error);
         };

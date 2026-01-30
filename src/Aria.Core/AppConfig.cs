@@ -171,7 +171,7 @@ public class AppConfig
 
     private static readonly string ConfigPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "ScreenBridge", "config.json");
+        "Aria", "config.json");
 
     /// <summary>
     /// 加载配置

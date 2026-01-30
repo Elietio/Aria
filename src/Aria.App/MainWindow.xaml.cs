@@ -4,9 +4,10 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using Aria.Core;
+using Aria.App.Services;
+using Aria.App.Helpers;
 using Wpf.Ui.Controls;
 
-using Aria.App;
 using System.IO;
 
 namespace Aria.App;
@@ -24,19 +25,20 @@ public partial class MainWindow : FluentWindow
     private readonly HotkeyService _hotkeyService;
     private readonly ModeManager _modeManager;
     private readonly DispatcherTimer _refreshTimer;
+    
+    // 新服务
+    private readonly ThemeService _themeService;
+    private readonly DialogueManager _dialogueManager;
+    private readonly MascotManager _mascotManager;
+    private readonly TrayIconHelper _trayIconHelper;
+    
     private bool _isExplicitExit;
 
     // 缓存显示器亮度值，避免刷新时闪烁 "--"
     // Key: DeviceName or FriendlyName, Value: Brightness %
     private Dictionary<string, int> _brightnessCache = new Dictionary<string, int>();
 
-    private System.Windows.Media.MediaPlayer? _voicePlayer;
-
     private const int WM_HOTKEY = 0x0312;
-    private IntPtr _lastIconHandle = IntPtr.Zero;
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
-    private static extern bool DestroyIcon(IntPtr handle);
 
     public MainWindow()
     {
@@ -52,6 +54,12 @@ public partial class MainWindow : FluentWindow
             _windowService = new WindowService(_monitorService);
             _hotkeyService = new HotkeyService();
             _modeManager = new ModeManager(_audioService, _monitorService, _windowService, _ddcService, _config);
+            
+            // 初始化新服务
+            _themeService = new ThemeService();
+            _dialogueManager = new DialogueManager(_config);
+            _mascotManager = new MascotManager(_config);
+            _trayIconHelper = new TrayIconHelper(_config);
 
             // 绑定事件
             _modeManager.ModeChanged += ModeManager_ModeChanged;
@@ -65,9 +73,6 @@ public partial class MainWindow : FluentWindow
                 Interval = TimeSpan.FromSeconds(2)
             };
             _refreshTimer.Tick += async (s, e) => await RefreshStatusAsync();
-            
-            // 初始化音频播放器
-            _voicePlayer = new System.Windows.Media.MediaPlayer();
         }
         catch (Exception ex)
         {
@@ -506,9 +511,8 @@ public partial class MainWindow : FluentWindow
         Dispatcher.Invoke(() => 
         {
             UpdateUIForMode(mode);
-            // 播放切换音效 (仅在模式实际变化时触发)
-            string switchVoice = mode == AppMode.PS5Mode ? "switch_to_ps5.mp3" : "switch_to_win.mp3";
-            PlayVoiceFile(switchVoice);
+            // 播放切换音效 (使用 DialogueManager)
+            _dialogueManager.PlayModeSwitchVoice(mode == AppMode.PS5Mode);
         });
     }
 
@@ -580,58 +584,7 @@ public partial class MainWindow : FluentWindow
 
     private void UpdateTrayIcon(AppMode mode)
     {
-        try
-        {
-            string subPath;
-            
-            if (_config.Theme == AppConfig.UIStyle.MoeGlass || _config.Theme == AppConfig.UIStyle.MoeClean)
-            {
-                // Moe 风格
-                subPath = mode == AppMode.PS5Mode ? "Assets/Moe/tray_ps5.ico" : "Assets/Moe/tray_windows.ico";
-            }
-            else
-            {
-                // Classic 风格
-                subPath = mode == AppMode.PS5Mode ? "Assets/tray_ps5.ico" : "Assets/tray_windows.ico";
-            }
-            
-            string fullPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, subPath);
-            
-            if (System.IO.File.Exists(fullPath))
-            {
-                // 直接使用 Icon 构造函数加载 .ico 文件，以支持多尺寸 (16/32/48/64/256)
-                // 这样能保证在不同 DPI 下都清晰
-                var icon = new System.Drawing.Icon(fullPath);
-                
-                TrayIcon.Icon = icon;
-                
-                // 注意: new Icon(path) 不需要手动 destroy handle，GC 会处理 (或者 Icon Dispose)
-                // 但之前的代码用了 DestroyIcon，如果 _lastIconHandle 还是旧的 handle (来自 bitmap.GetHicon)，还是需要清理。
-                // 不过既然这里用了新的 managed Icon 对象，TrayIcon.Icon setter 会自己管理吗？
-                // H.NotifyIcon.Wpf/WinForms 这种通常接受 System.Drawing.Icon.
-                // 之前的 _lastIconHandle 是为了清理 GetHicon() 产生的 GDI 资源。
-                // 这次我们不需要 _lastIconHandle 了，或者保留清理逻辑以防切换回旧 Drawing 逻辑 (虽然已经被我删了)。
-                if (_lastIconHandle != IntPtr.Zero) 
-                {
-                    DestroyIcon(_lastIconHandle);
-                    _lastIconHandle = IntPtr.Zero;
-                }
-                
-                string suffix = (_config.Theme == AppConfig.UIStyle.MoeGlass || _config.Theme == AppConfig.UIStyle.MoeClean) 
-                    ? " (Moe)" : "";
-                TrayIcon.ToolTipText = mode == AppMode.PS5Mode 
-                    ? $"ScreenBridge - {_config.ModeB.Name}{suffix}" 
-                    : $"ScreenBridge - {_config.ModeA.Name}{suffix}";
-            }
-            else
-            {
-                Console.WriteLine($"[TrayIcon] Icon file not found: {fullPath}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[TrayIcon] Failed to update icon: {ex.Message}");
-        }
+        _trayIconHelper.UpdateIcon(TrayIcon, mode);
     }
 
     private async void SwitchModeButton_Click(object sender, RoutedEventArgs e)
@@ -689,81 +642,14 @@ public partial class MainWindow : FluentWindow
 
     private void ShowMascotDialogue()
     {
-        // 简单的交互对话
-        string[] windowsDialogues = {
-            "工作中请勿打扰哦... (认真)",
-            "主人的效率真高呢！",
-            "记得适时休息一下眼睛~",
-            "ScreenBridge 正在监控一切 ( •̀ ω •́ )✧",
-            "有什么指令吗？",
-            "累了吗？要注意劳逸结合哦。",
-            "放心交给我，绝不出错。",
-            "看到你这么努力，我也更有干劲了！",
-            "喝杯水吧，补充水分很重要。",
-            "今天的日程安排得如何了？",
-            "记得随手保存哦！数据丢失很可怕的。",
-            "坐姿端正了吗？不要弯腰驼背哦。",
-            "虽然很想聊天，但工作优先！",
-            "加油加油！你是最棒的！",
-            "如果累了，闭目养神五分钟吧。"
-        };
-
-        string[] ps5Dialogues = {
-            "好耶！打游戏时间到！(≧∇≦)ﾉ",
-            "这关怎么过呀... 帮帮我~",
-            "摸鱼万岁！",
-            "手柄电量还够吗？",
-            "冲鸭！拿下这局！",
-            "别，别过来！救命呀！",
-            "哼哼，我可是很强的！",
-            "下一款游戏玩什么呢？",
-            "快看快看！这个连招帅不帅！",
-            "再玩最后一局... 就一局！",
-            "有点饿了... 有零食吗？",
-            "这就是“白金奖杯”的含金量！",
-            "玄学时刻！这次一定能出货！",
-            "呜呜... 被队友坑了...",
-            "熬夜打游戏虽然爽，但也要注意身体呀！"
-        };
-
-        bool isModeB = _modeManager.CurrentMode == AppMode.PS5Mode;
-        var list = isModeB ? ps5Dialogues : windowsDialogues;
-        int index = new Random().Next(list.Length);
-        var text = list[index];
+        bool isPS5Mode = _modeManager.CurrentMode == AppMode.PS5Mode;
+        var (text, index) = _dialogueManager.GetRandomDialogue(isPS5Mode);
 
         // Show Bubble
         ShowBubble(text);
         
-        // Play AI Voice (e.g. win_0.mp3)
-        string prefix = isModeB ? "ps5" : "win";
-        PlayVoiceFile($"{prefix}_{index}.mp3");
-    }
-    
-    private void PlayVoiceFile(string filename)
-    {
-        if (_config.EnableMoeVoice && _voicePlayer != null)
-        {
-            try
-            {
-                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets/Moe/Voice", filename);
-                
-                if (File.Exists(path))
-                {
-                    _voicePlayer.Open(new Uri(path));
-                    _voicePlayer.Volume = 1.0; 
-                    _voicePlayer.Play();
-                }
-                else
-                {
-                    // 若文件不存在，静默失败 (或 Debug Log)
-                    System.Diagnostics.Debug.WriteLine($"Voice file not found: {path}");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Voice Play Failed: {ex.Message}");
-            }
-        }
+        // Play Voice
+        _dialogueManager.PlayDialogueVoice(isPS5Mode, index);
     }
 
     private async void ShowBubble(string text)
@@ -865,12 +751,12 @@ public partial class MainWindow : FluentWindow
                 var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
                 if (!string.IsNullOrEmpty(exePath))
                 {
-                    key?.SetValue("ScreenBridge", $"\"{exePath}\"");
+                    key?.SetValue("Aria", $"\"{exePath}\"");
                 }
             }
             else
             {
-                key?.DeleteValue("ScreenBridge", false);
+                key?.DeleteValue("Aria", false);
             }
         }
         catch
@@ -961,76 +847,12 @@ public partial class MainWindow : FluentWindow
                 ModeIcon.Symbol = symbol;
             }
         }
-        // 4. 更新强调色 (Galaxy Brain Option: Colors + Brushes)
+        // 4. 更新强调色 (使用 ThemeService)
         Application.Current.Dispatcher.InvokeAsync(() =>
         {
-            try
-            {
-                bool isPinkMode = (profile.Name != null && profile.Name.Contains("PS5", StringComparison.OrdinalIgnoreCase)) 
-                                  || profile.Name == _config.ModeB.Name;
-
-                var color = isPinkMode 
-                    ? System.Windows.Media.Color.FromRgb(0xF4, 0x8F, 0xB1) // PS5 Pink
-                    : System.Windows.Media.Color.FromRgb(0x21, 0x96, 0xF3); // Windows Blue
-
-                var brush = new System.Windows.Media.SolidColorBrush(color);
-                brush.Freeze();
-
-                // 核心: Wpf.Ui 很多控件直接绑定 Color 资源而不是 Brush 资源，所以必须同时覆盖 Color Key
-                var brushKeys = new[] 
-                {
-                    // System Keys
-                    "SystemAccentBrush", "SystemAccentBrushPrimary", "SystemAccentBrushSecondary", "SystemAccentBrushTertiary",
-                    // Accent Fills
-                    "AccentFillColorDefaultBrush", "AccentFillColorSecondaryBrush", "AccentFillColorTertiaryBrush",
-                    // Accent Text
-                    "AccentTextFillColorPrimaryBrush", "AccentTextFillColorSecondaryBrush", "AccentTextFillColorTertiaryBrush",
-                    // Fallback
-                    "ControlFillColorDefaultBrush"
-                };
-
-                // 对应的 Color Key (去掉 "Brush" 后缀)
-                var colorKeys = new List<string> 
-                { 
-                    "SystemAccentColor", "SystemAccentColorPrimary", "SystemAccentColorSecondary", "SystemAccentColorTertiary" 
-                };
-                foreach(var k in brushKeys) 
-                {
-                    // Wpf.Ui 命名惯例: AccentFillColorDefaultBrush -> AccentFillColorDefault (Color)
-                    if (k.EndsWith("Brush")) colorKeys.Add(k.Substring(0, k.Length - 5));
-                }
-
-                void InjectResources(ResourceDictionary target)
-                {
-                    foreach (var key in colorKeys) target[key] = color;
-                    foreach (var key in brushKeys) target[key] = brush;
-                }
-
-                // A. Apply to Application Resources
-                InjectResources(Application.Current.Resources);
-
-                // B. Apply to MainWindow
-                InjectResources(this.Resources);
-
-                // C. Apply to All Other Windows
-                foreach (Window win in Application.Current.Windows)
-                {
-                    if (win != this)
-                    {
-                        InjectResources(win.Resources);
-                        if (win.Content is UIElement ui) ui.InvalidateVisual();
-                    }
-                }
-                
-                this.InvalidateVisual();
-                
-                System.Diagnostics.Debug.WriteLine($"[Theme] Forced Accent Color & Brushes: {color}");
-            }
-
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to update accent color: {ex.Message}");
-            }
+            bool isPS5Mode = (profile.Name != null && profile.Name.Contains("PS5", StringComparison.OrdinalIgnoreCase)) 
+                              || profile.Name == _config.ModeB.Name;
+            _themeService.ApplyAccentForMode(isPS5Mode);
             
             // 5. 更新卡片样式 (Glass vs Clean)
             UpdateCardStyles(_config.Theme);
@@ -1040,78 +862,7 @@ public partial class MainWindow : FluentWindow
     private void UpdateCardStyles(AppConfig.UIStyle style)
     {
         var cards = new[] { ModeStatusCard, AudioSettingsCard, HotkeySettingsCard, MonitorInfoCard };
-
-        if (style == AppConfig.UIStyle.Classic)
-        {
-            // 恢复默认
-            foreach (var card in cards)
-            {
-                if (card == null) continue;
-                card.ClearValue(Wpf.Ui.Controls.Card.BackgroundProperty);
-                card.ClearValue(Wpf.Ui.Controls.Card.BorderBrushProperty);
-                card.ClearValue(Wpf.Ui.Controls.Card.BorderThicknessProperty);
-                card.ClearValue(Wpf.Ui.Controls.Card.EffectProperty); 
-            }
-        }
-        else if (style == AppConfig.UIStyle.MoeGlass)
-        {
-            // Dynamic Tint: 黑白切换 (不带彩色倾向，保持干净)
-            var baseColor = _config.EnableMoeMascot 
-                ? System.Windows.Media.Color.FromRgb(0, 0, 0)       // 纯黑
-                : System.Windows.Media.Color.FromRgb(255, 255, 255); // 纯白
-
-            // Refined Glass logic
-            double effectiveOpacity = _config.GlassOpacity;
-            // 仅在黑底(开启看板娘)时强制最低 20% 不透明度，避免文字在立绘上看不清
-            if (_config.EnableMoeMascot && effectiveOpacity < 0.2) effectiveOpacity = 0.2;
-            
-            byte alpha = (byte)(Math.Max(0.01, Math.Min(1.0, effectiveOpacity)) * 255);
-            
-            var glassBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B));
-            // 边框始终保持一定的亮色高光
-            var borderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb((byte)(alpha * 3), 255, 255, 255));
-            
-            foreach (var card in cards)
-            {
-                if (card == null) continue;
-                card.Background = glassBrush;
-                card.BorderBrush = borderBrush;
-                card.BorderThickness = new Thickness(1);
-                
-                // 柔和投影
-                var shadow = new System.Windows.Media.Effects.DropShadowEffect
-                {
-                    Color = System.Windows.Media.Colors.Black,
-                    Opacity = 0.25,
-                    BlurRadius = 20,
-                    ShadowDepth = 6,
-                    Direction = 270
-                };
-                card.Effect = shadow;
-            }
-        }
-        else if (style == AppConfig.UIStyle.MoeClean)
-        {
-            // Refined Clean (极简/隐形)
-            var baseColor = _config.EnableMoeMascot 
-                ? System.Windows.Media.Color.FromRgb(0, 0, 0) 
-                : System.Windows.Media.Color.FromRgb(255, 255, 255);
-
-            byte alpha = (byte)(Math.Max(0.01, Math.Min(1.0, _config.CleanOpacity)) * 255);
-            
-            var cleanBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B));
-
-            foreach (var card in cards)
-            {
-                if (card == null) continue;
-                card.Background = cleanBrush;
-                card.BorderThickness = new Thickness(0); 
-                card.BorderBrush = System.Windows.Media.Brushes.Transparent;
-                
-                // 彻底移除阴影
-                card.Effect = null;
-            }
-        }
+        _themeService.ApplyCardStyles(cards, _config);
     }
 
 
