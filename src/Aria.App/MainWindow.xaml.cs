@@ -712,21 +712,8 @@ public partial class MainWindow : FluentWindow
          catch {}
 
          // 2. Animate Ambient Glow Color (Radial Only)
-         if (AmbientGlowInner != null)
-         {
-             var targetColor = isModeB
-                 ? System.Windows.Media.Color.FromRgb(255, 105, 180) // HotPink
-                 : System.Windows.Media.Color.FromRgb(0, 191, 255);  // DeepSkyBlue
-             
-             var anim = new System.Windows.Media.Animation.ColorAnimation
-             {
-                 To = targetColor,
-                 Duration = TimeSpan.FromSeconds(0.6),
-                 EasingFunction = new System.Windows.Media.Animation.QuadraticEase()
-             };
-
-             AmbientGlowInner.BeginAnimation(System.Windows.Media.GradientStop.ColorProperty, anim);
-         }
+         // Note: Animation removed to rely on DynamicResource switching in ThemeService
+         // The color will update automatically when SwitchTheme swaps the dictionary.
     }
 
     private void AutoStartToggle_Checked(object sender, RoutedEventArgs e)
@@ -852,7 +839,7 @@ public partial class MainWindow : FluentWindow
         {
             bool isPS5Mode = (profile.Name != null && profile.Name.Contains("PS5", StringComparison.OrdinalIgnoreCase)) 
                               || profile.Name == _config.ModeB.Name;
-            _themeService.ApplyAccentForMode(isPS5Mode);
+            _themeService.SwitchTheme(isPS5Mode);
             
             // 5. 更新卡片样式 (Glass vs Clean)
             UpdateCardStyles(_config.Theme);

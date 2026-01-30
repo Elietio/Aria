@@ -11,34 +11,37 @@
         WindowStartupLocation="CenterScreen"
         ExtendsContentIntoTitleBar="True"
         Topmost="True"
-
+        BorderThickness="0"
+        ResizeMode="CanResize"
         KeyDown="Window_KeyDown">
 
     <ui:FluentWindow.Resources>
         <SolidColorBrush x:Key="CardBackgroundBrush" Color="#20808080"/>
+        <SolidColorBrush x:Key="CardBorderBrush" Color="Transparent"/>
         <Style TargetType="ui:Card">
             <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
     </ui:FluentWindow.Resources>
 
-    <Grid Margin="16" MouseLeftButtonDown="Window_MouseLeftButtonDown" Background="Transparent">
+    <Grid Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- Layer 0: Ambient Glow (Radial Only) -->
-        <Border x:Name="AmbientGlow" Grid.RowSpan="2" Opacity="0.6" Visibility="Collapsed">
+        <Border x:Name="AmbientGlow" Grid.RowSpan="2" Opacity="0.3" Visibility="Collapsed" IsHitTestVisible="False">
             <Border.Background>
                 <RadialGradientBrush GradientOrigin="0.5,0.5" Center="0.5,0.5" RadiusX="0.8" RadiusY="0.8">
-                    <GradientStop x:Name="AmbientGlowInner" Color="#00BFFF" Offset="0"/>
+                    <GradientStop x:Name="AmbientGlowInner" Color="{DynamicResource AmbientGlowColor}" Offset="0"/>
                     <GradientStop Color="Transparent" Offset="1"/>
                 </RadialGradientBrush>
             </Border.Background>
         </Border>
 
-        <!-- Layer 1: Mascot (Spans All Rows, Bottom Right for Overview) -->
+        <!-- Layer 1: Mascot -->
         <Image x:Name="MascotImage" Grid.RowSpan="2" 
                HorizontalAlignment="Right" VerticalAlignment="Bottom" 
                Height="500" Stretch="Uniform" Opacity="0.10" Margin="0,0,-50,-20"
@@ -46,127 +49,141 @@
                Visibility="Collapsed"
                IsHitTestVisible="False"/>
 
-        <!-- 标题 -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
-            <TextBlock Text="窗口概览" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center"/>
-            <TextBlock Text=" - 点击窗口以激活，按住拖动或点击箭头可移动到另一显示器" 
+        <!-- TitleBar with Integrated Controls -->
+        <ui:TitleBar Grid.Row="0" Title="窗口概览" CloseWindowByDoubleClickOnIcon="True">
+             <ui:TitleBar.Icon>
+                 <ui:SymbolIcon Symbol="WindowApps24"/>
+             </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <!-- Content Area -->
+        <Grid Grid.Row="1" Margin="32,16,32,32" MouseLeftButtonDown="Window_MouseLeftButtonDown">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Hint Text -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,24">
+                 <TextBlock Text="点击窗口以激活，按住拖动或点击箭头可移动到另一显示器" 
                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" 
-                       FontSize="14" VerticalAlignment="Center" Margin="8,0,0,0"/>
-            <TextBlock Text="（按 ESC 关闭）" 
+                       FontSize="14" VerticalAlignment="Center"/>
+                 <TextBlock Text="（按 ESC 关闭）" 
                        Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}" 
                        FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"/>
-        </StackPanel>
+            </StackPanel>
 
-        <!-- 显示器区域 -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+            <!-- 显示器区域 -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-            <!-- 左显示器 -->
-            <ui:Card Grid.Column="0" Margin="0,0,8,0" 
-                     AllowDrop="True" Drop="LeftMonitor_Drop">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    
-                    <TextBlock x:Name="LeftMonitorHeader" Grid.Row="0" Text="🖥️ 左显示器" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="LeftMonitorList">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <ui:Card Margin="0,0,0,8" Padding="12" 
-                                             PreviewMouseLeftButtonDown="WindowCard_PreviewMouseLeftButtonDown"
-                                             PreviewMouseMove="WindowCard_PreviewMouseMove"
-                                             PreviewMouseLeftButtonUp="WindowCard_PreviewMouseLeftButtonUp"
-                                             Cursor="Hand">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Width="48" Height="36" 
-                                                    Background="Transparent"
-                                                    Margin="0,0,12,0">
-                                                <Image Source="{Binding Icon}" Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1" Text="{Binding Title}" 
-                                                       TextTrimming="CharacterEllipsis"
-                                                       VerticalAlignment="Center"/>
-                                            <ui:Button Grid.Column="2" 
-                                                       Appearance="Secondary" Margin="8,0,0,0" Padding="8,4"
-                                                       Click="MoveToRight_Click"
-                                                       ToolTip="发送到右侧显示器">
-                                                <Viewbox Width="20" Height="20">
-                                                    <Path Fill="{Binding RelativeSource={RelativeSource AncestorType=ui:Button}, Path=Foreground}" 
-                                                          Data="M4,4 H20 V20 H4 Z M5,5 V19 H19 V5 Z M8,11 H13 V9 L16,12 L13,15 V13 H8 Z"/>
-                                                </Viewbox>
-                                            </ui:Button>
-                                        </Grid>
-                                    </ui:Card>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
-            </ui:Card>
+                <!-- 左显示器 -->
+                <ui:Card Grid.Column="0" Margin="0,0,12,0" 
+                         AllowDrop="True" Drop="LeftMonitor_Drop">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock x:Name="LeftMonitorHeader" Grid.Row="0" Text="🖥️ 左显示器" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                        
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="LeftMonitorList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <ui:Card Margin="0,0,0,8" Padding="12" 
+                                                 PreviewMouseLeftButtonDown="WindowCard_PreviewMouseLeftButtonDown"
+                                                 PreviewMouseMove="WindowCard_PreviewMouseMove"
+                                                 PreviewMouseLeftButtonUp="WindowCard_PreviewMouseLeftButtonUp"
+                                                 Cursor="Hand">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="48" Height="36" 
+                                                        Background="Transparent"
+                                                        Margin="0,0,12,0">
+                                                    <Image Source="{Binding Icon}" Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                </Border>
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}" 
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center"/>
+                                                <ui:Button Grid.Column="2" 
+                                                           Appearance="Secondary" Margin="8,0,0,0" Padding="8,4"
+                                                           Click="MoveToRight_Click"
+                                                           ToolTip="发送到右侧显示器">
+                                                    <Viewbox Width="20" Height="20">
+                                                        <Path Fill="{Binding RelativeSource={RelativeSource AncestorType=ui:Button}, Path=Foreground}" 
+                                                              Data="M4,4 H20 V20 H4 Z M5,5 V19 H19 V5 Z M8,11 H13 V9 L16,12 L13,15 V13 H8 Z"/>
+                                                    </Viewbox>
+                                                </ui:Button>
+                                            </Grid>
+                                        </ui:Card>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </ui:Card>
 
-            <!-- 右显示器 -->
-            <ui:Card Grid.Column="1" Margin="8,0,0,0"
-                     AllowDrop="True" Drop="RightMonitor_Drop">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    
-                    <TextBlock x:Name="RightMonitorHeader" Grid.Row="0" Text="🖥️ 右显示器" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="RightMonitorList">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <ui:Card Margin="0,0,0,8" Padding="12"
-                                             PreviewMouseLeftButtonDown="WindowCard_PreviewMouseLeftButtonDown"
-                                             PreviewMouseMove="WindowCard_PreviewMouseMove"
-                                             PreviewMouseLeftButtonUp="WindowCard_PreviewMouseLeftButtonUp"
-                                             Cursor="Hand">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Width="48" Height="36" 
-                                                    Background="Transparent"
-                                                    Margin="0,0,12,0">
-                                                <Image Source="{Binding Icon}" Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="1" Text="{Binding Title}" 
-                                                       TextTrimming="CharacterEllipsis"
-                                                       VerticalAlignment="Center"/>
-                                            <ui:Button Grid.Column="2" 
-                                                       Appearance="Secondary" Margin="8,0,0,0" Padding="8,4"
-                                                       Click="MoveToLeft_Click"
-                                                       ToolTip="发送到左侧显示器">
-                                                <Viewbox Width="20" Height="20">
-                                                    <Path Fill="{Binding RelativeSource={RelativeSource AncestorType=ui:Button}, Path=Foreground}" 
-                                                          Data="M4,4 H20 V20 H4 Z M5,5 V19 H19 V5 Z M16,11 H11 V9 L8,12 L11,15 V13 H16 Z"/>
-                                                </Viewbox>
-                                            </ui:Button>
-                                        </Grid>
-                                    </ui:Card>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
-            </ui:Card>
+                <!-- 右显示器 -->
+                <ui:Card Grid.Column="1" Margin="12,0,0,0"
+                         AllowDrop="True" Drop="RightMonitor_Drop">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock x:Name="RightMonitorHeader" Grid.Row="0" Text="🖥️ 右显示器" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                        
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="RightMonitorList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <ui:Card Margin="0,0,0,8" Padding="12"
+                                                 PreviewMouseLeftButtonDown="WindowCard_PreviewMouseLeftButtonDown"
+                                                 PreviewMouseMove="WindowCard_PreviewMouseMove"
+                                                 PreviewMouseLeftButtonUp="WindowCard_PreviewMouseLeftButtonUp"
+                                                 Cursor="Hand">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="48" Height="36" 
+                                                        Background="Transparent"
+                                                        Margin="0,0,12,0">
+                                                    <Image Source="{Binding Icon}" Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                </Border>
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}" 
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center"/>
+                                                <ui:Button Grid.Column="2" 
+                                                           Appearance="Secondary" Margin="8,0,0,0" Padding="8,4"
+                                                           Click="MoveToLeft_Click"
+                                                           ToolTip="发送到左侧显示器">
+                                                    <Viewbox Width="20" Height="20">
+                                                        <Path Fill="{Binding RelativeSource={RelativeSource AncestorType=ui:Button}, Path=Foreground}" 
+                                                              Data="M4,4 H20 V20 H4 Z M5,5 V19 H19 V5 Z M16,11 H11 V9 L8,12 L11,15 V13 H16 Z"/>
+                                                    </Viewbox>
+                                                </ui:Button>
+                                            </Grid>
+                                        </ui:Card>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </ui:Card>
+            </Grid>
         </Grid>
     </Grid>
 </ui:FluentWindow>

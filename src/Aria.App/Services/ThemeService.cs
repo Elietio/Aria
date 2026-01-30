@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using Wpf.Ui.Controls;
+using Wpf.Ui.Appearance;
 using Aria.Core;
 
 namespace Aria.App.Services;
@@ -19,56 +20,58 @@ public class ThemeService
     public static readonly Color WindowsGlowColor = Color.FromRgb(0, 191, 255); // DeepSkyBlue
 
     /// <summary>
-    /// 应用强调色到全局资源
+    /// switch theme
     /// </summary>
-    public void ApplyAccentColor(Color color)
+    public void SwitchTheme(bool isPS5Mode)
     {
-        var brush = new SolidColorBrush(color);
-        brush.Freeze();
+        try
+        {
+            string dictName = isPS5Mode ? "Themes/PS5.xaml" : "Themes/Windows.xaml";
+            // Use absolute Pack URI to ensure correct resource loading
+            var dictUri = new Uri($"pack://application:,,,/Aria.App;component/{dictName}", UriKind.Absolute);
 
-        var brushKeys = new[]
-        {
-            "SystemAccentBrush", "SystemAccentBrushPrimary", "SystemAccentBrushSecondary", "SystemAccentBrushTertiary",
-            "AccentFillColorDefaultBrush", "AccentFillColorSecondaryBrush", "AccentFillColorTertiaryBrush",
-            "AccentTextFillColorPrimaryBrush", "AccentTextFillColorSecondaryBrush", "AccentTextFillColorTertiaryBrush",
-            "ControlFillColorDefaultBrush"
-        };
+            var dictionaries = Application.Current.Resources.MergedDictionaries;
+            
+                // Verify dictionary contents for debugging
+            var debugInfo = "Loaded Dictionaries:\n";
+            foreach (var d in dictionaries)
+            {
+                debugInfo += $"- Source: {d.Source}\n";
+            }
+            // System.Windows.MessageBox.Show(debugInfo); // Comment out after debugging
 
-        var colorKeys = new List<string>
-        {
-            "SystemAccentColor", "SystemAccentColorPrimary", "SystemAccentColorSecondary", "SystemAccentColorTertiary"
-        };
-        
-        foreach (var k in brushKeys)
-        {
-            if (k.EndsWith("Brush")) colorKeys.Add(k.Substring(0, k.Length - 5));
+            // Find ALL existing theme dictionaries to ensure clean cleanup
+            var existingThemes = new List<ResourceDictionary>();
+            foreach (var d in dictionaries)
+            {
+                if (d.Source != null && (d.Source.OriginalString.Contains("Themes/Windows.xaml") || d.Source.OriginalString.Contains("Themes/PS5.xaml")))
+                {
+                    existingThemes.Add(d);
+                }
+            }
+
+            // Remove old themes
+            foreach (var oldTheme in existingThemes)
+            {
+                dictionaries.Remove(oldTheme);
+            }
+
+            // Create and add new dictionary
+            var newTheme = new ResourceDictionary { Source = dictUri };
+            dictionaries.Add(newTheme);
+            
+            System.Diagnostics.Debug.WriteLine($"[ThemeService] Switched theme to: {dictName}");
+
+            // Wpf.Ui (4.x) specific: Update library controls
+            var accentColor = isPS5Mode ? PS5AccentColor : WindowsAccentColor;
+            ApplicationAccentColorManager.Apply(accentColor);
         }
-
-        void InjectResources(ResourceDictionary target)
+        catch (Exception ex)
         {
-            foreach (var key in colorKeys) target[key] = color;
-            foreach (var key in brushKeys) target[key] = brush;
+            // Log fallback or error
+            System.Diagnostics.Debug.WriteLine($"[ThemeService] Error switching theme: {ex.Message}");
+            System.Windows.MessageBox.Show($"主题切换出错: {ex.Message}", "Theme Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         }
-
-        // Apply to Application Resources
-        InjectResources(Application.Current.Resources);
-
-        // Apply to all Windows
-        foreach (Window win in Application.Current.Windows)
-        {
-            InjectResources(win.Resources);
-            if (win.Content is UIElement ui) ui.InvalidateVisual();
-        }
-
-        System.Diagnostics.Debug.WriteLine($"[ThemeService] Applied Accent Color: {color}");
-    }
-
-    /// <summary>
-    /// 根据模式应用强调色
-    /// </summary>
-    public void ApplyAccentForMode(bool isPS5Mode)
-    {
-        ApplyAccentColor(isPS5Mode ? PS5AccentColor : WindowsAccentColor);
     }
 
     /// <summary>
@@ -76,7 +79,10 @@ public class ThemeService
     /// </summary>
     public Color GetGlowColor(bool isPS5Mode)
     {
-        return isPS5Mode ? PS5GlowColor : WindowsGlowColor;
+         // Keep for compatibility if used by other components, though now handled by ResourceDictionary mostly.
+         // Or strictly return color for non-UI logic (like led controller if any)
+         // For now, return hardcoded values matching the XAML
+         return isPS5Mode ? Color.FromRgb(255, 105, 180) : Color.FromRgb(0, 191, 255);
     }
 
     /// <summary>

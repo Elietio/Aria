@@ -36,12 +36,14 @@ public partial class WindowOverview : FluentWindow
         _monitorService = monitorService;
         _isModeB = isModeB;
 
+        // Apply UI Style immediately to avoid flicker
+        ApplyUIStyle();
+
         Loaded += WindowOverview_Loaded;
     }
 
     private void WindowOverview_Loaded(object sender, RoutedEventArgs e)
     {
-        ApplyUIStyle();
         RefreshWindows();
     }
 
@@ -74,10 +76,11 @@ public partial class WindowOverview : FluentWindow
                     : Color.FromRgb(255, 255, 255);
                 
                 // Use slightly higher opacity for Overview cards so they pop out
-                byte alpha = config.EnableMoeMascot ? (byte)100 : (byte)40; 
+                byte alpha = config.EnableMoeMascot ? (byte)50 : (byte)30; 
                 
                 var cardBrush = new SolidColorBrush(Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B));
-                var borderBrush = new SolidColorBrush(Color.FromArgb((byte)(alpha * 1.5), 255, 255, 255));
+                // Remove border as requested
+                var borderBrush = Brushes.Transparent;
 
                 this.Resources["CardBackgroundBrush"] = cardBrush;
                 this.Resources["CardBorderBrush"] = borderBrush;
@@ -94,11 +97,7 @@ public partial class WindowOverview : FluentWindow
                     var uri = new Uri($"pack://application:,,,/Aria.App;component/{imagePath}");
                     MascotImage.Source = new BitmapImage(uri);
 
-                    // Glow Color
-                    var glowColor = _isModeB 
-                        ? Color.FromRgb(255, 105, 180) 
-                        : Color.FromRgb(0, 191, 255);
-                    AmbientGlowInner.Color = glowColor;
+                    // Glow Color: Handled by DynamicResource in XAML now!
                 }
                 else
                 {
@@ -109,12 +108,7 @@ public partial class WindowOverview : FluentWindow
             else
             {
                 // Classic Mode
-                this.WindowBackdropType = WindowBackdropType.Mica; // Default to Mica for Classic too? Or None + System Color
-                // If None, we need a background color.
-                // Use default Mica for modern feel even in Classic, or strictly None.
-                // User said "Classic... background shouldn't change" -> implying it was changing to something weird.
-                // Let's set it to Mica but NO Mascot/Glow.
-                this.WindowBackdropType = WindowBackdropType.Mica;
+                this.WindowBackdropType = WindowBackdropType.Mica; 
                 this.Background = Brushes.Transparent; // Let Mica show through
 
                 // Hide Moe elements
