@@ -60,6 +60,7 @@ public partial class MainWindow : FluentWindow
             _dialogueManager = new DialogueManager(_config);
             _mascotManager = new MascotManager(_config);
             _trayIconHelper = new TrayIconHelper(_config);
+            InitializeSystemCounters(); // Init Performance Counters
 
             // 绑定事件
             _modeManager.ModeChanged += ModeManager_ModeChanged;
@@ -203,6 +204,46 @@ public partial class MainWindow : FluentWindow
 
     private bool _isUpdatingUI;
 
+    // State for Triggers
+    private DateTime _sessionStartTime = DateTime.Now;
+    private bool _healthCheckTriggered = false;
+    private string? _lastAudioDeviceId = null;
+    
+    // System Monitoring
+    private System.Diagnostics.PerformanceCounter? _cpuCounter;
+    private System.Diagnostics.PerformanceCounter? _ramCounter;
+    private DateTime _lastSystemAlertTime = DateTime.MinValue;
+    private const int SYSTEM_ALERT_COOLDOWN_MINUTES = 10;
+    private const int IDLE_THRESHOLD_SECONDS = 300; // 5 mins
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct LASTINPUTINFO
+    {
+        public static readonly int SizeOf = Marshal.SizeOf(typeof(LASTINPUTINFO));
+        [MarshalAs(UnmanagedType.U4)]
+        public int cbSize;
+        [MarshalAs(UnmanagedType.U4)]
+        public UInt32 dwTime;
+    }
+
+    [DllImport("user32.dll")]
+    static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+    private void InitializeSystemCounters()
+    {
+        try
+        {
+            _cpuCounter = new System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total");
+            _ramCounter = new System.Diagnostics.PerformanceCounter("Memory", "% Committed Bytes In Use");
+            _cpuCounter.NextValue(); // First value is always 0
+            _ramCounter.NextValue();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Counters Init Failed: {ex.Message}");
+        }
+    }
+
     private async Task RefreshStatusAsync()
     {
         try
@@ -239,6 +280,16 @@ public partial class MainWindow : FluentWindow
             AudioDeviceComboBox.ItemsSource = audioDevices;
             if (currentDevice != null)
             {
+                // Trigger SpecialAudio on Device Change
+                if (_lastAudioDeviceId != null && _lastAudioDeviceId != currentDevice.Id)
+                {
+                    if (_config.EnableMoeMascot)
+                    {
+                        ShowMascotDialogue(DialogueContext.SpecialAudio);
+                    }
+                }
+                _lastAudioDeviceId = currentDevice.Id;
+
                 AudioDeviceComboBox.SelectionChanged -= AudioDeviceComboBox_SelectionChanged;
                 AudioDeviceComboBox.SelectedValue = currentDevice.Id;
                 AudioDeviceComboBox.SelectionChanged += AudioDeviceComboBox_SelectionChanged;
@@ -253,6 +304,12 @@ public partial class MainWindow : FluentWindow
         
             // 3. 更新显示器信息
             RefreshMonitorInfo();
+            
+            // 4. Triggers Check (Health, System)
+            if (_config.EnableMoeMascot)
+            {
+                 CheckTriggers();
+            }
         }
         catch (Exception ex)
         {
@@ -262,6 +319,70 @@ public partial class MainWindow : FluentWindow
         {
             _isUpdatingUI = false;
         }
+    }
+    
+    private void CheckTriggers()
+    {
+        var now = DateTime.Now;
+
+        // 1. Health Check (Once per session, after 2h)
+        if (!_healthCheckTriggered && (now - _sessionStartTime).TotalHours >= 2)
+        {
+            _healthCheckTriggered = true;
+            ShowMascotDialogue(DialogueContext.HealthLong);
+            return; // Priority
+        }
+
+        // 2. System Alerts (Cooldown)
+        if ((now - _lastSystemAlertTime).TotalMinutes < SYSTEM_ALERT_COOLDOWN_MINUTES) return;
+
+        // 3. Idle Check
+        if (GetIdleTimeSeconds() > IDLE_THRESHOLD_SECONDS)
+        {
+            // Only trigger if we haven't already just triggered it? 
+            // The Cooldown prevents spam.
+            _lastSystemAlertTime = now;
+            ShowMascotDialogue(DialogueContext.SystemIdle);
+            return;
+        }
+
+        // 4. CPU / RAM Check
+        if (_cpuCounter != null && _ramCounter != null)
+        {
+            float cpu = _cpuCounter.NextValue();
+            float ram = _ramCounter.NextValue();
+            
+            if (cpu > 80)
+            {
+                _lastSystemAlertTime = now;
+                ShowMascotDialogue(DialogueContext.SystemHighCpu);
+                return;
+            }
+            
+            if (ram > 90)
+            {
+                _lastSystemAlertTime = now;
+                ShowMascotDialogue(DialogueContext.SystemHighRam);
+                return;
+            }
+        }
+    }
+
+    private uint GetIdleTimeSeconds()
+    {
+        var lastInputInfo = new LASTINPUTINFO();
+        lastInputInfo.cbSize = Marshal.SizeOf(lastInputInfo);
+        lastInputInfo.dwTime = 0;
+
+        var envTicks = (uint)Environment.TickCount;
+
+        if (GetLastInputInfo(ref lastInputInfo))
+        {
+            var lastInputTick = lastInputInfo.dwTime;
+            return (envTicks - lastInputTick) / 1000;
+        }
+
+        return 0;
     }
 
     private async void AudioDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -280,8 +401,6 @@ public partial class MainWindow : FluentWindow
             VolumeSlider.ValueChanged += VolumeSlider_ValueChanged;
         }
     }
-
-
 
     private void RefreshMonitorInfo()
     {
@@ -626,30 +745,39 @@ public partial class MainWindow : FluentWindow
 
     private void MascotImage_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        // Standee interaction disabled
+        if (_config.EnableMoeMascot)
+        {
+             // Click Trigger -> Context is Click (or just random generic)
+             // For now, let's use null context to use Time Context + Shuffle
+             ShowMascotDialogue();
+        }
     }
 
     private void ModeIcon_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        // Only trigger if Mascot/Voice enabled (or just always?)
-        // User said "only click avatar".
         if (_config.EnableMoeMascot)
         {
             ShowMascotDialogue();
-            // Also play voice? ShowMascotDialogue calls PlayVoiceFile.
         }
     }
 
-    private void ShowMascotDialogue()
+    private async void ShowMascotDialogue(DialogueContext? forceContext = null)
     {
         bool isPS5Mode = _modeManager.CurrentMode == AppMode.PS5Mode;
-        var (text, index) = _dialogueManager.GetRandomDialogue(isPS5Mode);
+        
+        // 1. Get Dialogue (Context Aware)
+        var item = _dialogueManager.GetDialogue(isPS5Mode, forceContext);
+        string text = isPS5Mode ? item.PS5Text : item.WinText;
 
-        // Show Bubble
+        // 2. Show Bubble
         ShowBubble(text);
         
-        // Play Voice
-        _dialogueManager.PlayDialogueVoice(isPS5Mode, index);
+        // 3. Play Voice
+        _dialogueManager.PlayVoice(isPS5Mode, item);
+        
+        // 4. Trigger Visual Reaction on HEAD ICON
+        // Use ModeImage, with opacity 1.0
+        await _mascotManager.TriggerReactionAsync(ModeImage, item.ReactionImageWin, item.ReactionImagePS5, isPS5Mode, durationMs: 5000, opacityOverride: 1.0);
     }
 
     private async void ShowBubble(string text)
@@ -674,8 +802,8 @@ public partial class MainWindow : FluentWindow
             // DialogueBubble.Opacity = 0;
             // ... (Storyboard code omitted for brevity, just visibility for now)
 
-            // Wait 3 seconds
-            await Task.Delay(3000, token);
+            // Wait 5 seconds
+            await Task.Delay(5000, token);
             
             // Hide
             DialogueBubble.Visibility = Visibility.Collapsed;
@@ -688,32 +816,38 @@ public partial class MainWindow : FluentWindow
 
     private void UpdateMoeVisuals(bool isModeB)
     {
-         if ((_config.Theme != AppConfig.UIStyle.MoeGlass && _config.Theme != AppConfig.UIStyle.MoeClean) 
-             || !_config.EnableMoeMascot)
+         bool isMoe = (_config.Theme == AppConfig.UIStyle.MoeGlass || _config.Theme == AppConfig.UIStyle.MoeClean);
+         
+         if (!isMoe || !_config.EnableMoeMascot)
          {
-             AmbientGlow.Visibility = Visibility.Collapsed;
+             // HIDE Avatar, SHOW Symbol (Default state)
+             ModeIcon.Visibility = Visibility.Visible;
+             ModeImage.Visibility = Visibility.Collapsed;
              MascotImage.Visibility = Visibility.Collapsed;
+             AmbientGlow.Visibility = Visibility.Collapsed;
              return;
          }
 
-         AmbientGlow.Visibility = Visibility.Visible;
+         // SHOW Avatar, HIDE Symbol
+         ModeIcon.Visibility = Visibility.Collapsed;
+         ModeImage.Visibility = Visibility.Visible;
+         
+         // RESTORE Large Standee (Static)
          MascotImage.Visibility = Visibility.Visible;
-
-         // 1. 切换立绘 (PNG Assets)
-         string imagePath = isModeB ? "Assets/Moe/standee_ps5.png" : "Assets/Moe/standee_windows.png";
+         string standeePath = isModeB ? "Assets/Moe/standee_ps5.png" : "Assets/Moe/standee_windows.png";
          try
          {
-             var uri = new Uri($"pack://application:,,,/Aria.App;component/{imagePath}");
+             var uri = new Uri($"pack://application:,,,/Aria.App;component/{standeePath}");
              var bitmap = new System.Windows.Media.Imaging.BitmapImage(uri);
              MascotImage.Source = bitmap;
-             // 半透明处理，避免遮挡文字 (User Configured)
              MascotImage.Opacity = _config.MascotOpacity;
          }
          catch {}
 
-         // 2. Animate Ambient Glow Color (Radial Only)
-         // Note: Animation removed to rely on DynamicResource switching in ThemeService
-         // The color will update automatically when SwitchTheme swaps the dictionary.
+         AmbientGlow.Visibility = Visibility.Visible;
+
+         // Update Avatar Image with 1.0 Opacity (Dynamic)
+         _mascotManager.UpdateVisuals(ModeImage, AmbientGlow, null, isModeB, opacityOverride: 1.0);
     }
 
     private void AutoStartToggle_Checked(object sender, RoutedEventArgs e)
@@ -808,15 +942,10 @@ public partial class MainWindow : FluentWindow
             ModeIcon.Visibility = Visibility.Collapsed;
             ModeImage.Visibility = Visibility.Visible;
             
-            string imagePath = isModeB ? "Assets/Moe/mode_ps5.png" : "Assets/Moe/mode_windows.png";
-            try
-            {
-                var uri = new Uri($"pack://application:,,,/Aria.App;component/{imagePath}");
-                var bitmap = new System.Windows.Media.Imaging.BitmapImage(uri);
-                ModeImage.Source = bitmap;
-            }
-            catch {}
-
+            // REMOVED LEGACY LOGIC:
+            // Do NOT set ModeImage.Source here. 
+            // It is handled exclusively by UpdateMoeVisuals -> MascotManager.
+            
             // 更新立绘和氛围光
             UpdateMoeVisuals(isModeB);
         }

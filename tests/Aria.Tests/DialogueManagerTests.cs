@@ -18,49 +18,57 @@ public class DialogueManagerTests
     }
 
     [Fact]
-    public void GetRandomDialogue_WindowsMode_ReturnsNonEmptyText()
+    public void GetDialogue_WindowsMode_ReturnsValidItem()
     {
         // Act
-        var (text, index) = _dialogueManager.GetRandomDialogue(isPS5Mode: false);
+        var item = _dialogueManager.GetDialogue(isPS5Mode: false);
 
         // Assert
-        Assert.False(string.IsNullOrEmpty(text));
-        Assert.InRange(index, 0, 100); // Reasonable index range
+        Assert.NotNull(item);
+        Assert.False(string.IsNullOrEmpty(item.WinText));
+        Assert.False(string.IsNullOrEmpty(item.WinVoice));
     }
 
     [Fact]
-    public void GetRandomDialogue_PS5Mode_ReturnsNonEmptyText()
+    public void GetDialogue_PS5Mode_ReturnsValidItem()
     {
         // Act
-        var (text, index) = _dialogueManager.GetRandomDialogue(isPS5Mode: true);
+        var item = _dialogueManager.GetDialogue(isPS5Mode: true);
 
         // Assert
-        Assert.False(string.IsNullOrEmpty(text));
-        Assert.InRange(index, 0, 100);
+        Assert.NotNull(item);
+        Assert.False(string.IsNullOrEmpty(item.PS5Text));
+        Assert.False(string.IsNullOrEmpty(item.PS5Voice));
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void GetRandomDialogue_ReturnsValidIndex(bool isPS5Mode)
+    [Fact]
+    public void GetDialogue_ShuffleBag_ReducesRepetition()
     {
-        // Act - Call multiple times to test randomness
-        for (int i = 0; i < 10; i++)
+        // Act - Call multiple times
+        // Since we have a small pool (~3-4 per slot), calling 10 times should trigger refill.
+        // We just verify it always returns something valid.
+        
+        var distinctIds = new HashSet<string>();
+        for (int i = 0; i < 20; i++)
         {
-            var (text, index) = _dialogueManager.GetRandomDialogue(isPS5Mode);
-            Assert.True(index >= 0);
-            Assert.False(string.IsNullOrEmpty(text));
+            var item = _dialogueManager.GetDialogue(isPS5Mode: false);
+            Assert.NotNull(item);
+            distinctIds.Add(item.Id);
         }
+        
+        // Assert we got multiple distinct items (at least 2 for any slot)
+        Assert.True(distinctIds.Count >= 2);
     }
 
     [Fact]
-    public void PlayDialogueVoice_DoesNotThrow_WhenVoiceDisabled()
+    public void PlayVoice_DoesNotThrow_WhenVoiceDisabled()
     {
         // Arrange
         _config.EnableMoeVoice = false;
+        var item = new DialogueItem { WinVoice = "test.mp3" };
 
         // Act & Assert - Should not throw
-        var exception = Record.Exception(() => _dialogueManager.PlayDialogueVoice(false, 0));
+        var exception = Record.Exception(() => _dialogueManager.PlayVoice(false, item));
         Assert.Null(exception);
     }
 

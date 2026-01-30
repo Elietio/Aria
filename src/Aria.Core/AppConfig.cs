@@ -97,7 +97,7 @@ public class AppConfig
     /// <summary>
     /// 是否启用 Moe 模式下的看板娘立绘
     /// </summary>
-    public bool EnableMoeMascot { get; set; } = false;
+    public bool EnableMoeMascot { get; set; } = true;
 
     /// <summary>
     /// 是否启用看板娘语音

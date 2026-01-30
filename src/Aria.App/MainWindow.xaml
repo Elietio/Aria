@@ -40,7 +40,8 @@
                HorizontalAlignment="Left" VerticalAlignment="Bottom" 
                Height="600" Stretch="Uniform" Opacity="0.9" Margin="-100,0,0,-50"
                RenderOptions.BitmapScalingMode="HighQuality"
-               IsHitTestVisible="False"/>
+               MouseDown="MascotImage_MouseDown"
+               Cursor="Hand"/>
 
         <!-- 标题栏 -->
         <ui:TitleBar Grid.Row="0" Title="Aria" ShowMaximize="True" ShowMinimize="True"/>
