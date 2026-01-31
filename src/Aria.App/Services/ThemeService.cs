@@ -56,15 +56,16 @@ public class ThemeService
                 dictionaries.Remove(oldTheme);
             }
 
-            // Create and add new dictionary
+            // Add our custom theme dictionary first
             var newTheme = new ResourceDictionary { Source = dictUri };
             dictionaries.Add(newTheme);
             
-            System.Diagnostics.Debug.WriteLine($"[ThemeService] Switched theme to: {dictName}");
-
-            // Wpf.Ui (4.x) specific: Update library controls
+            // Apply accent color via Wpf.Ui manager for ToggleSwitch/Slider controls
+            // Note: Buttons with explicit Background bindings will use our dictionary instead
             var accentColor = isPS5Mode ? PS5AccentColor : WindowsAccentColor;
             ApplicationAccentColorManager.Apply(accentColor);
+            
+            System.Diagnostics.Debug.WriteLine($"[ThemeService] Switched theme to: {dictName} (accent: {accentColor})");
         }
         catch (Exception ex)
         {

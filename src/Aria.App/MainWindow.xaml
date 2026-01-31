@@ -116,6 +116,7 @@
                         <ui:Button x:Name="SwitchModeButton"
                                    Content="切换模式" 
                                    Appearance="Primary"
+                                   Background="{DynamicResource AccentFillColorDefaultBrush}"
                                    Click="SwitchModeButton_Click"
                                    Width="160" Height="40" FontSize="14" Margin="0,0,0,12"/>
 

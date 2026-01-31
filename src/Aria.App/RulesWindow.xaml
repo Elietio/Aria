@@ -62,7 +62,7 @@
                             <ComboBoxItem Content="极简萌系 (Moe Clean)" Tag="MoeClean"/>
                         </ComboBox>
 
-                        <CheckBox x:Name="MascotToggle" Content="启用看板娘立绘" Margin="0,0,0,10" Checked="MascotToggle_CheckedChanged" Unchecked="MascotToggle_CheckedChanged"/>
+                        <ui:ToggleSwitch x:Name="MascotToggle" Content="启用看板娘立绘" Margin="0,0,0,10" Checked="MascotToggle_CheckedChanged" Unchecked="MascotToggle_CheckedChanged"/>
                         
                         <!-- 看板娘透明度滑块 -->
                         <Grid x:Name="MascotOpacityPanel" Margin="20,0,0,10" Visibility="Collapsed">
@@ -81,7 +81,7 @@
                                        FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </Grid>
 
-                        <CheckBox x:Name="VoiceToggle" Content="启用看板娘语音" Margin="0,0,0,10"/>
+                        <ui:ToggleSwitch x:Name="VoiceToggle" Content="启用看板娘语音" Margin="0,0,0,10"/>
                         
                         <TextBlock Text="背景材质:" Margin="0,0,0,5"/>
                         <ComboBox x:Name="BackdropCombo" Margin="0,0,0,10">
@@ -219,7 +219,7 @@
         <Border Grid.Row="2" Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}" Padding="20,10">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <ui:Button Content="取消" Appearance="Secondary" Click="CancelButton_Click" Width="80" Margin="0,0,10,0"/>
-                <ui:Button Content="保存" Appearance="Primary" Click="SaveButton_Click" Width="80"/>
+                <ui:Button Content="保存" Appearance="Primary" Background="{DynamicResource AccentFillColorDefaultBrush}" Click="SaveButton_Click" Width="80"/>
             </StackPanel>
         </Border>
     </Grid>

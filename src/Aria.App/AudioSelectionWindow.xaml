@@ -34,7 +34,7 @@
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
             <ui:Button Content="取消" Click="CancelButton_Click" Appearance="Secondary" Margin="0,0,8,0"/>
-            <ui:Button Content="确定" Click="OkButton_Click" Appearance="Primary"/>
+            <ui:Button Content="确定" Click="OkButton_Click" Appearance="Primary" Background="{DynamicResource AccentFillColorDefaultBrush}"/>
         </StackPanel>
     </Grid>
 </ui:FluentWindow>
