@@ -24,11 +24,10 @@
         </Grid.RowDefinitions>
 
         <!-- Layer 0: Ambient Glow (Spans All Rows) -->
-        <!-- Layer 0: Ambient Glow (Radial Only - Cleaner) -->
-        <Border x:Name="AmbientGlow" Grid.RowSpan="2" Opacity="0.6">
+        <Border x:Name="AmbientGlow" Grid.RowSpan="2" Opacity="0.6" Visibility="Collapsed">
             <Border.Background>
                 <RadialGradientBrush GradientOrigin="0.5,0.5" Center="0.5,0.5" RadiusX="0.8" RadiusY="0.8">
-                    <GradientStop x:Name="AmbientGlowInner" Color="{DynamicResource AmbientGlowColor}" Offset="0"/>
+                    <GradientStop x:Name="AmbientGlowInner" Color="#00BFFF" Offset="0"/>
                     <GradientStop Color="Transparent" Offset="1"/>
                 </RadialGradientBrush>
             </Border.Background>
@@ -39,7 +38,7 @@
         <Image x:Name="MascotImage" Grid.RowSpan="2" 
                HorizontalAlignment="Left" VerticalAlignment="Bottom" 
                Height="600" Stretch="Uniform" Opacity="0.9" Margin="-100,0,0,-50"
-               RenderOptions.BitmapScalingMode="HighQuality"
+               RenderOptions.BitmapScalingMode="Fant"
                MouseDown="MascotImage_MouseDown"
                Cursor="Hand"/>
 

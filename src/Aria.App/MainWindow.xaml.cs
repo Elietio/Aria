@@ -64,9 +64,15 @@ public partial class MainWindow : FluentWindow
 
             // 绑定事件
             _modeManager.ModeChanged += ModeManager_ModeChanged;
-            Loaded += MainWindow_Loaded;
-            Closing += MainWindow_Closing;
+            this.Closing += MainWindow_Closing;
             SourceInitialized += MainWindow_SourceInitialized;
+            
+            // Fix: Acrylic fall-back when inactive
+            this.Activated += (s, e) => HandleWindowActivation(true);
+            this.Deactivated += (s, e) => HandleWindowActivation(false);
+            
+            // 首次加载初始化
+            Loaded += MainWindow_Loaded;
 
             // 初始化定时器
             _refreshTimer = new DispatcherTimer
@@ -77,10 +83,18 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"程序启动初始化失败:\n{ex.Message}\n\n堆栈:\n{ex.StackTrace}", "启动错误", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
-            _isExplicitExit = true;
-            System.Windows.Application.Current?.Shutdown();
+            System.Windows.MessageBox.Show($"启动失败: {ex.Message}\n{ex.StackTrace}", "Aria Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            System.Windows.Application.Current.Shutdown();
         }
+    }
+    
+    private void HandleWindowActivation(bool isActive)
+    {
+        // No special handling for activation state.
+        // The DWM Acrylic fallback to gray is a system-level behavior we cannot override.
+        // Previous attempts (black overlay, theme color overlay, Window.Background) all 
+        // resulted in "double transition" (our color first, then system gray).
+        // The cleanest solution is to let the system handle it naturally.
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -824,7 +838,7 @@ public partial class MainWindow : FluentWindow
              ModeIcon.Visibility = Visibility.Visible;
              ModeImage.Visibility = Visibility.Collapsed;
              MascotImage.Visibility = Visibility.Collapsed;
-             AmbientGlow.Visibility = Visibility.Collapsed;
+             if (AmbientGlow != null) AmbientGlow.Visibility = Visibility.Collapsed;
              return;
          }
 
@@ -840,14 +854,34 @@ public partial class MainWindow : FluentWindow
              var uri = new Uri($"pack://application:,,,/Aria.App;component/{standeePath}");
              var bitmap = new System.Windows.Media.Imaging.BitmapImage(uri);
              MascotImage.Source = bitmap;
+             
+             // 半透明处理，避免遮挡文字 (User Configured)
              MascotImage.Opacity = _config.MascotOpacity;
          }
          catch {}
 
-         AmbientGlow.Visibility = Visibility.Visible;
+         // Ambient Glow Visibility
+         if (AmbientGlow != null) AmbientGlow.Visibility = Visibility.Visible;
+
+         // Animate Ambient Glow Color (Radial Only)
+         if (AmbientGlowInner != null)
+         {
+             var targetColor = isModeB
+                 ? System.Windows.Media.Color.FromRgb(255, 105, 180) // HotPink
+                 : System.Windows.Media.Color.FromRgb(0, 191, 255);  // DeepSkyBlue
+             
+             var anim = new System.Windows.Media.Animation.ColorAnimation
+             {
+                 To = targetColor,
+                 Duration = TimeSpan.FromSeconds(0.6),
+                 EasingFunction = new System.Windows.Media.Animation.QuadraticEase()
+             };
+
+             AmbientGlowInner.BeginAnimation(System.Windows.Media.GradientStop.ColorProperty, anim);
+         }
 
          // Update Avatar Image with 1.0 Opacity (Dynamic)
-         _mascotManager.UpdateVisuals(ModeImage, AmbientGlow, null, isModeB, opacityOverride: 1.0);
+         _mascotManager.UpdateVisuals(ModeImage, null, null, isModeB, opacityOverride: 1.0);
     }
 
     private void AutoStartToggle_Checked(object sender, RoutedEventArgs e)
@@ -937,14 +971,11 @@ public partial class MainWindow : FluentWindow
         }
 
         // 2. 处理图标/立绘
+        // 2. 处理图标/立绘
         if (isMoe)
         {
             ModeIcon.Visibility = Visibility.Collapsed;
             ModeImage.Visibility = Visibility.Visible;
-            
-            // REMOVED LEGACY LOGIC:
-            // Do NOT set ModeImage.Source here. 
-            // It is handled exclusively by UpdateMoeVisuals -> MascotManager.
             
             // 更新立绘和氛围光
             UpdateMoeVisuals(isModeB);
@@ -966,6 +997,7 @@ public partial class MainWindow : FluentWindow
         // 4. 更新强调色 (使用 ThemeService)
         Application.Current.Dispatcher.InvokeAsync(() =>
         {
+            // ... (keep rest)
             bool isPS5Mode = (profile.Name != null && profile.Name.Contains("PS5", StringComparison.OrdinalIgnoreCase)) 
                               || profile.Name == _config.ModeB.Name;
             _themeService.SwitchTheme(isPS5Mode);

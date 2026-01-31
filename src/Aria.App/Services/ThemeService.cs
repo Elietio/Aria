@@ -56,22 +56,69 @@ public class ThemeService
                 dictionaries.Remove(oldTheme);
             }
 
-            // Add our custom theme dictionary first
+            // Create and add new dictionary
             var newTheme = new ResourceDictionary { Source = dictUri };
             dictionaries.Add(newTheme);
             
-            // Apply accent color via Wpf.Ui manager for ToggleSwitch/Slider controls
-            // Note: Buttons with explicit Background bindings will use our dictionary instead
+            System.Diagnostics.Debug.WriteLine($"[ThemeService] Switched theme to: {dictName}");
+
+            // Wpf.Ui (4.x) specific: Update library controls
             var accentColor = isPS5Mode ? PS5AccentColor : WindowsAccentColor;
             ApplicationAccentColorManager.Apply(accentColor);
             
-            System.Diagnostics.Debug.WriteLine($"[ThemeService] Switched theme to: {dictName} (accent: {accentColor})");
+            // "Galaxy Brain Option": Force inject brushes into resources to override defaults
+            ApplyAccentColor(accentColor);
         }
         catch (Exception ex)
         {
             // Log fallback or error
             System.Diagnostics.Debug.WriteLine($"[ThemeService] Error switching theme: {ex.Message}");
             System.Windows.MessageBox.Show($"主题切换出错: {ex.Message}", "Theme Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
+    private void ApplyAccentColor(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+
+        // 核心: Wpf.Ui 很多控件直接绑定 Color 资源而不是 Brush 资源，所以必须同时覆盖 Color Key
+        var brushKeys = new[] 
+        {
+            // System Keys
+            "SystemAccentBrush", "SystemAccentBrushPrimary", "SystemAccentBrushSecondary", "SystemAccentBrushTertiary",
+            // Accent Fills
+            "AccentFillColorDefaultBrush", "AccentFillColorSecondaryBrush", "AccentFillColorTertiaryBrush",
+            // Accent Text
+            "AccentTextFillColorPrimaryBrush", "AccentTextFillColorSecondaryBrush", "AccentTextFillColorTertiaryBrush",
+            // Fallback
+            "ControlFillColorDefaultBrush"
+        };
+
+        // 对应的 Color Key (去掉 "Brush" 后缀)
+        var colorKeys = new List<string> 
+        { 
+            "SystemAccentColor", "SystemAccentColorPrimary", "SystemAccentColorSecondary", "SystemAccentColorTertiary" 
+        };
+        foreach(var k in brushKeys) 
+        {
+            if (k.EndsWith("Brush")) colorKeys.Add(k.Substring(0, k.Length - 5));
+        }
+
+        void InjectResources(ResourceDictionary target)
+        {
+            foreach (var key in colorKeys) target[key] = color;
+            foreach (var key in brushKeys) target[key] = brush;
+        }
+
+        // A. Apply to Application Resources
+        InjectResources(Application.Current.Resources);
+
+        // B. Apply to All Open Windows
+        foreach (Window win in Application.Current.Windows)
+        {
+            InjectResources(win.Resources);
+            if (win.Content is UIElement ui) ui.InvalidateVisual();
         }
     }
 

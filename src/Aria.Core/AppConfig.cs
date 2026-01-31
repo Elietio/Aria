@@ -234,6 +234,15 @@ public class AppConfig
             GlassBackdrop = BackdropStyle.Acrylic;
             CleanBackdrop = BackdropStyle.Mica;
         }
+
+        // [v1.2.2] Migrate Opacity Defaults
+        // Old: Glass 0.6, Clean 0.3 -> New: Glass 0.2, Clean 0.6
+        // We check for exact matches of old defaults to avoid overriding user custom settings
+        if (Math.Abs(GlassOpacity - 0.60) < 0.001 && Math.Abs(CleanOpacity - 0.30) < 0.001)
+        {
+            GlassOpacity = 0.20;
+            CleanOpacity = 0.60;
+        }
     }
 
     /// <summary>
